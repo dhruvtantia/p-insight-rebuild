@@ -38,6 +38,10 @@ Expected response:
 pytest
 ```
 
+## Development Auth Placeholder
+
+Portfolio and holdings APIs currently use a deterministic demo user dependency. If the demo user does not exist, the backend creates it on first authenticated request. This is temporary and will be replaced by Supabase Auth or Clerk in a later auth phase.
+
 ## Alembic
 
 Alembic is initialized in `alembic/`. The initial migration defines the Phase 1 data model tables.

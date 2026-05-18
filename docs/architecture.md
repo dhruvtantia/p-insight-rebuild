@@ -84,7 +84,7 @@ All broker imports must normalize into the same internal holdings and transactio
 
 ## Assumptions Log
 
-- MVP auth starts as a safe placeholder and can later support Supabase Auth or Clerk.
+- MVP auth starts as a deterministic demo user placeholder and can later support Supabase Auth or Clerk.
 - PostgreSQL is the preferred database for local and production development.
 - SQLite may be used only for isolated test runs.
 - Uploads are validated before holdings are saved.
