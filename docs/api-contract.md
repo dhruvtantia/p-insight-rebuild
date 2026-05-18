@@ -224,10 +224,108 @@ Duplicate behavior:
 
 ## Market Data
 
-- `GET /api/v1/market-data/quotes`
-- `GET /api/v1/market-data/providers`
+- `GET /api/market-data/prices?symbols=AAPL,MSFT`
+- `GET /api/market-data/prices/{symbol}`
+- `GET /api/market-data/history/{symbol}?start=2026-01-01&end=2026-01-31`
+- `POST /api/portfolios/{portfolio_id}/prices/refresh`
 
-Purpose: backend-mediated market data access.
+Purpose: backend-only market data access and portfolio holding price refresh.
+
+Latest price response:
+
+```json
+{
+  "symbol": "AAPL",
+  "price": 210.12,
+  "currency": "USD",
+  "source": "mock",
+  "as_of": "2026-01-01T00:00:00Z",
+  "is_realtime": false
+}
+```
+
+Batch price response:
+
+```json
+{
+  "prices": [
+    {
+      "symbol": "AAPL",
+      "price": 210.12,
+      "currency": "USD",
+      "source": "mock",
+      "as_of": "2026-01-01T00:00:00Z",
+      "is_realtime": false
+    },
+    {
+      "symbol": "MSFT",
+      "price": 425.44,
+      "currency": "USD",
+      "source": "mock",
+      "as_of": "2026-01-01T00:00:00Z",
+      "is_realtime": false
+    }
+  ]
+}
+```
+
+History response:
+
+```json
+{
+  "symbol": "AAPL",
+  "start": "2026-01-01",
+  "end": "2026-01-03",
+  "prices": [
+    {
+      "symbol": "AAPL",
+      "date": "2026-01-01",
+      "close": 207.49,
+      "currency": "USD",
+      "source": "mock"
+    }
+  ]
+}
+```
+
+Portfolio refresh response:
+
+```json
+{
+  "portfolio_id": "portfolio-id",
+  "refreshed_count": 2,
+  "prices": [
+    {
+      "symbol": "AAPL",
+      "price": 210.12,
+      "currency": "USD",
+      "source": "mock",
+      "as_of": "2026-01-01T00:00:00Z",
+      "is_realtime": false
+    }
+  ],
+  "holdings": [
+    {
+      "holding_id": "holding-id",
+      "symbol": "AAPL",
+      "previous_price": 125,
+      "current_price": 210.12,
+      "currency": "USD",
+      "source": "mock",
+      "as_of": "2026-01-01T00:00:00Z",
+      "is_realtime": false
+    }
+  ]
+}
+```
+
+Provider behavior:
+- Default provider is `mock`.
+- Mock prices are deterministic for `AAPL`, `MSFT`, `GOOGL`, `AMZN`, `TSLA`, `NVDA`, `SPY`, `VOO`, and `QQQ`.
+- Unknown mock symbols receive a deterministic pseudo-price based on the normalized symbol.
+- Latest and refresh calls insert `asset_prices` records.
+- Refresh updates `holding.current_price` for all holdings in the portfolio.
+- `polygon`/`massive` and `fmp` providers are backend placeholders. They require backend environment keys and return clear provider errors until implemented.
 
 ## Analytics
 

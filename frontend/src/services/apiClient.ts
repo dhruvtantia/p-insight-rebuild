@@ -17,13 +17,20 @@ type JsonRequestOptions = Omit<RequestInit, "body"> & {
 };
 
 export async function apiRequest<T>(path: string, options: JsonRequestOptions = {}): Promise<T> {
+  const isFormData = options.body instanceof FormData;
+  const requestBody =
+    options.body === undefined ? undefined : isFormData ? (options.body as FormData) : JSON.stringify(options.body);
+  const headers = isFormData
+    ? options.headers
+    : {
+        "Content-Type": "application/json",
+        ...options.headers
+      };
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers
-    },
-    body: options.body === undefined ? undefined : JSON.stringify(options.body)
+    headers,
+    body: requestBody
   });
 
   if (response.status === 204) {

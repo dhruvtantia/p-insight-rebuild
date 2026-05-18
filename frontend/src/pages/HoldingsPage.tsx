@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Edit2, Plus, Save, Search, Trash2, X } from "lucide-react";
+import { Clock, Edit2, Plus, RefreshCw, Save, Search, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link } from "react-router-dom";
@@ -7,6 +7,7 @@ import { z } from "zod";
 
 import { Badge, Button, Card, CardTitle, EmptyState, ErrorState, Input, LoadingState, Table, Td, Th } from "../components/ui";
 import { useHoldings } from "../hooks/useHoldings";
+import { usePortfolioPrices } from "../hooks/usePortfolioPrices";
 import { usePortfolios } from "../hooks/usePortfolios";
 import type { Holding, HoldingCreateInput } from "../types/holdings";
 
@@ -55,11 +56,14 @@ export function HoldingsPage() {
   }, [portfolios.data, selectedPortfolioId]);
 
   const holdings = useHoldings(selectedPortfolioId || null);
+  const portfolioPrices = usePortfolioPrices(selectedPortfolioId || null);
 
   const sectors = useMemo(() => {
     const values = new Set((holdings.data ?? []).map((holding) => holding.sector).filter(Boolean));
     return Array.from(values).sort() as string[];
   }, [holdings.data]);
+
+  const latestPriceUpdatedAt = useMemo(() => getLatestPriceUpdatedAt(holdings.data ?? []), [holdings.data]);
 
   const filteredHoldings = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -101,7 +105,7 @@ export function HoldingsPage() {
       <HoldingsHeader />
 
       <Card>
-        <div className="grid gap-4 lg:grid-cols-[1fr_1fr_0.8fr]">
+        <div className="grid gap-4 lg:grid-cols-[1fr_1fr_0.8fr_auto]">
           <label className="grid gap-2">
             <span className="text-sm font-medium text-ink">Portfolio</span>
             <select
@@ -147,7 +151,36 @@ export function HoldingsPage() {
               ))}
             </select>
           </label>
+          <div className="grid gap-2">
+            <span className="text-sm font-medium text-ink">Prices</span>
+            <Button
+              type="button"
+              onClick={() => portfolioPrices.refreshPrices.mutate()}
+              disabled={!selectedPortfolioId || portfolioPrices.refreshPrices.isPending}
+              className="w-full whitespace-nowrap"
+            >
+              <RefreshCw className={portfolioPrices.refreshPrices.isPending ? "animate-spin" : ""} size={16} />
+              {portfolioPrices.refreshPrices.isPending ? "Refreshing" : "Refresh Prices"}
+            </Button>
+          </div>
         </div>
+        <div className="mt-4 flex flex-col gap-3 border-t border-line pt-4 text-sm text-slate-600 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-2">
+            <Clock size={16} className="text-accent" />
+            <span>Last price update: {latestPriceUpdatedAt ? formatDateTime(latestPriceUpdatedAt) : "N/A"}</span>
+          </div>
+          {portfolioPrices.refreshPrices.data ? (
+            <span>
+              Refreshed {portfolioPrices.refreshPrices.data.refreshed_count} holding
+              {portfolioPrices.refreshPrices.data.refreshed_count === 1 ? "" : "s"}
+            </span>
+          ) : null}
+        </div>
+        {portfolioPrices.refreshPrices.isError ? (
+          <div className="mt-4">
+            <ErrorState title="Price refresh failed" detail={portfolioPrices.refreshPrices.error.message} />
+          </div>
+        ) : null}
       </Card>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_390px]">
@@ -193,14 +226,26 @@ export function HoldingsPage() {
 
 function HoldingsHeader() {
   return (
-    <section>
-      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">Holdings</p>
-      <h1 className="mt-1 text-3xl font-semibold">Manual holdings</h1>
-      <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-        Add, edit, and delete holdings through the backend portfolio APIs. Upload flows and analytics remain separate phases.
-      </p>
+    <section className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">Holdings</p>
+        <h1 className="mt-1 text-3xl font-semibold">Manual holdings</h1>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+          Add, edit, and delete holdings through the backend portfolio APIs. Upload imports are staged and validated before holdings are created.
+        </p>
+      </div>
+      <Link to="/upload">
+        <Button variant="secondary">
+          <FileUpIcon />
+          Upload holdings
+        </Button>
+      </Link>
     </section>
   );
+}
+
+function FileUpIcon() {
+  return <Plus size={16} />;
 }
 
 function HoldingsTable({
@@ -433,10 +478,28 @@ function formatNumber(value: number) {
 }
 
 function formatCurrency(value: number | null, currency: string) {
-  if (value === null) return "--";
+  if (value === null) return "N/A";
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency,
     maximumFractionDigits: 2
   }).format(value);
+}
+
+function getLatestPriceUpdatedAt(holdings: Holding[]) {
+  const timestamps = holdings
+    .filter((holding) => holding.current_price !== null)
+    .map((holding) => new Date(holding.updated_at).getTime())
+    .filter((timestamp) => Number.isFinite(timestamp));
+  if (!timestamps.length) {
+    return null;
+  }
+  return new Date(Math.max(...timestamps)).toISOString();
+}
+
+function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short"
+  }).format(new Date(value));
 }

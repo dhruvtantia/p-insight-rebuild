@@ -1,15 +1,20 @@
-import { Bot, PieChart, Plus, WalletCards } from "lucide-react";
+import { Bot, Clock, PieChart, Plus, RefreshCw, WalletCards } from "lucide-react";
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 
 import { Button, Card, CardTitle, EmptyState, ErrorState, LoadingState, Table, Td, Th } from "../components/ui";
 import { useHoldings } from "../hooks/useHoldings";
+import { usePortfolioPrices } from "../hooks/usePortfolioPrices";
 import { usePortfolios } from "../hooks/usePortfolios";
+import type { Holding } from "../types/holdings";
 import type { Portfolio } from "../types/portfolio";
 
 export function DashboardPage() {
   const portfolios = usePortfolios();
   const selectedPortfolio = portfolios.data?.[0] ?? null;
   const holdings = useHoldings(selectedPortfolio?.id);
+  const portfolioPrices = usePortfolioPrices(selectedPortfolio?.id);
+  const latestPriceUpdatedAt = useMemo(() => getLatestPriceUpdatedAt(holdings.data ?? []), [holdings.data]);
 
   if (portfolios.isLoading) {
     return <LoadingState label="Loading portfolios" />;
@@ -39,6 +44,13 @@ export function DashboardPage() {
     <div className="space-y-6">
       <DashboardHeader />
       <PortfolioSummary portfolio={selectedPortfolio!} />
+      <PriceFreshnessPanel
+        latestPriceUpdatedAt={latestPriceUpdatedAt}
+        isRefreshing={portfolioPrices.refreshPrices.isPending}
+        refreshedCount={portfolioPrices.refreshPrices.data?.refreshed_count}
+        errorMessage={portfolioPrices.refreshPrices.error?.message}
+        onRefresh={() => portfolioPrices.refreshPrices.mutate()}
+      />
       <DashboardPlaceholders />
       <HoldingsPreview portfolioId={selectedPortfolio!.id} isLoading={holdings.isLoading} isError={holdings.isError} holdings={holdings.data ?? []} errorMessage={holdings.error?.message} />
     </div>
@@ -71,6 +83,50 @@ function PortfolioSummary({ portfolio }: { portfolio: Portfolio }) {
         <SummaryItem label="Benchmark" value={portfolio.benchmark_symbol ?? "--"} />
         <SummaryItem label="Risk-free rate" value={portfolio.risk_free_rate === null ? "--" : `${portfolio.risk_free_rate}`} />
       </div>
+    </Card>
+  );
+}
+
+function PriceFreshnessPanel({
+  latestPriceUpdatedAt,
+  isRefreshing,
+  refreshedCount,
+  errorMessage,
+  onRefresh
+}: {
+  latestPriceUpdatedAt: string | null;
+  isRefreshing: boolean;
+  refreshedCount?: number;
+  errorMessage?: string;
+  onRefresh: () => void;
+}) {
+  return (
+    <Card>
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center gap-3">
+          <Clock className="text-accent" size={20} />
+          <div>
+            <p className="text-sm font-semibold text-ink">Price freshness</p>
+            <p className="mt-1 text-sm text-slate-600">
+              Last price update: {latestPriceUpdatedAt ? formatDateTime(latestPriceUpdatedAt) : "N/A"}
+            </p>
+          </div>
+        </div>
+        <Button type="button" onClick={onRefresh} disabled={isRefreshing} className="whitespace-nowrap">
+          <RefreshCw className={isRefreshing ? "animate-spin" : ""} size={16} />
+          {isRefreshing ? "Refreshing" : "Refresh Prices"}
+        </Button>
+      </div>
+      {typeof refreshedCount === "number" ? (
+        <p className="mt-3 text-sm text-slate-600">
+          Refreshed {refreshedCount} holding{refreshedCount === 1 ? "" : "s"}.
+        </p>
+      ) : null}
+      {errorMessage ? (
+        <div className="mt-4">
+          <ErrorState title="Price refresh failed" detail={errorMessage} />
+        </div>
+      ) : null}
     </Card>
   );
 }
@@ -201,10 +257,28 @@ function formatNumber(value: number) {
 }
 
 function formatCurrency(value: number | null) {
-  if (value === null) return "--";
+  if (value === null) return "N/A";
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
     maximumFractionDigits: 2
   }).format(value);
+}
+
+function getLatestPriceUpdatedAt(holdings: Holding[]) {
+  const timestamps = holdings
+    .filter((holding) => holding.current_price !== null)
+    .map((holding) => new Date(holding.updated_at).getTime())
+    .filter((timestamp) => Number.isFinite(timestamp));
+  if (!timestamps.length) {
+    return null;
+  }
+  return new Date(Math.max(...timestamps)).toISOString();
+}
+
+function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short"
+  }).format(new Date(value));
 }
