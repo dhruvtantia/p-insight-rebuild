@@ -42,6 +42,7 @@ build/
 coverage/
 frontend/dist/
 backend/dist/
+*.tsbuildinfo
 
 # Database files
 *.db
