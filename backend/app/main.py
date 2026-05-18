@@ -7,6 +7,7 @@ from app.core.logging import configure_logging
 from app.modules.holdings.router import router as holdings_router
 from app.modules.health.router import router as health_router
 from app.modules.portfolios.router import router as portfolios_router
+from app.modules.uploads.router import router as uploads_router
 
 
 def create_app() -> FastAPI:
@@ -26,6 +27,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(portfolios_router)
     app.include_router(holdings_router)
+    app.include_router(uploads_router)
     return app
 
 

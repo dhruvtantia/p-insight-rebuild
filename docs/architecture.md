@@ -82,11 +82,18 @@ Broker integrations are not part of the MVP implementation. Placeholder interfac
 
 All broker imports must normalize into the same internal holdings and transactions model used by manual uploads.
 
+## Upload Import Assumption
+
+CSV and XLSX uploads use a staged backend workflow: file parse, upload rows, column mapping, validation, then confirm import. Upload rows never write directly into holdings before validation.
+
+For MVP duplicate handling, confirm import skips any uploaded symbol that already exists in the portfolio. It also skips repeated symbols within the same upload after the first importable occurrence. The response includes warnings and reports a partial import when duplicates or invalid rows are skipped. This avoids silently changing existing holdings from uploaded data; merge/update behavior can be designed later.
+
 ## Assumptions Log
 
 - MVP auth starts as a deterministic demo user placeholder and can later support Supabase Auth or Clerk.
 - PostgreSQL is the preferred database for local and production development.
 - SQLite may be used only for isolated test runs.
 - Uploads are validated before holdings are saved.
+- Duplicate symbols in uploads are skipped during confirm import and reported as warnings.
 - AI responses are educational explanations, not guaranteed investment advice.
 - Billing is represented as plan and usage structure before live Stripe integration.

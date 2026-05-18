@@ -114,11 +114,113 @@ Derived fields:
 
 ## Uploads
 
-- `POST /api/v1/uploads/holdings/validate`
-- `GET /api/v1/uploads/{upload_id}`
-- `POST /api/v1/uploads/{upload_id}/apply`
+- `POST /api/portfolios/{portfolio_id}/uploads`
+- `GET /api/uploads/{upload_job_id}`
+- `POST /api/uploads/{upload_job_id}/column-mapping`
+- `POST /api/uploads/{upload_job_id}/validate`
+- `POST /api/uploads/{upload_job_id}/confirm`
+- `GET /api/uploads/{upload_job_id}/errors`
 
 Purpose: validate uploaded rows before writing holdings.
+
+Upload request:
+
+```http
+POST /api/portfolios/{portfolio_id}/uploads
+Content-Type: multipart/form-data
+
+file=<csv-or-xlsx-file>
+```
+
+Upload response:
+
+```json
+{
+  "id": "upload-job-id",
+  "portfolio_id": "portfolio-id",
+  "filename": "holdings.csv",
+  "status": "uploaded",
+  "total_rows": 2,
+  "valid_rows": 0,
+  "invalid_rows": 0,
+  "detected_columns": ["Ticker", "Name", "Shares", "Average Cost", "Market Value"],
+  "preview_rows": [
+    {
+      "Ticker": "AAPL",
+      "Name": "Apple Inc.",
+      "Shares": "10",
+      "Average Cost": "100",
+      "Market Value": "1250"
+    }
+  ],
+  "created_at": "2026-05-19T00:00:00Z",
+  "updated_at": "2026-05-19T00:00:00Z"
+}
+```
+
+Column mapping request:
+
+```json
+{
+  "mapping": {
+    "symbol": "Ticker",
+    "company_name": "Name",
+    "quantity": "Shares",
+    "average_cost": "Average Cost",
+    "market_value": "Market Value",
+    "currency": "Currency",
+    "sector": "Sector",
+    "asset_class": "Asset Class",
+    "exchange": "Exchange"
+  }
+}
+```
+
+Supported mapped fields:
+- `symbol`
+- `company_name`
+- `quantity`
+- `average_cost`
+- `market_value`
+- `currency`
+- `sector`
+- `asset_class`
+- `exchange`
+
+Required mapped fields:
+- `symbol`
+- `quantity`
+
+Validation behavior:
+- `symbol` is required.
+- `quantity` must be positive.
+- `average_cost` cannot be negative when present.
+- `market_value` cannot be negative when present.
+- `currency` defaults to the portfolio base currency.
+- `asset_class` defaults to `Equity`.
+- Each row is marked `valid` or `invalid` with row-level validation errors.
+
+Confirm response:
+
+```json
+{
+  "upload_job_id": "upload-job-id",
+  "status": "partial_imported",
+  "imported_count": 1,
+  "skipped_count": 1,
+  "invalid_rows": 1,
+  "warnings": [
+    "Row 2: AAPL skipped because it already exists in the portfolio or upload batch",
+    "Partial import occurred: 1 invalid row(s) were not imported"
+  ],
+  "created_holding_ids": ["holding-id"]
+}
+```
+
+Duplicate behavior:
+- Existing portfolio symbols are skipped on confirm import.
+- Repeated symbols within the same upload are skipped after the first importable occurrence.
+- Skipped duplicates are reported as warnings and cause `partial_imported`.
 
 ## Market Data
 

@@ -170,6 +170,7 @@ class UploadJob(TimestampMixin, Base):
     total_rows: Mapped[int] = mapped_column(default=0, nullable=False)
     valid_rows: Mapped[int] = mapped_column(default=0, nullable=False)
     invalid_rows: Mapped[int] = mapped_column(default=0, nullable=False)
+    column_mapping_json: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
 
     portfolio: Mapped[Portfolio] = relationship(back_populates="upload_jobs")
     rows: Mapped[list["UploadRow"]] = relationship(back_populates="upload_job")

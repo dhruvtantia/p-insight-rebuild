@@ -1,0 +1,278 @@
+import io
+from collections.abc import Generator
+
+import pytest
+from fastapi.testclient import TestClient
+from openpyxl import Workbook
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
+
+from app.db import models  # noqa: F401
+from app.db.base import Base
+from app.db.session import get_db
+from app.main import create_app
+
+
+@pytest.fixture()
+def client(tmp_path) -> Generator[TestClient, None, None]:
+    engine = create_engine(
+        f"sqlite:///{tmp_path}/p_insight_upload_test.db",
+        connect_args={"check_same_thread": False},
+        future=True,
+    )
+    TestingSessionLocal = sessionmaker(
+        bind=engine,
+        autoflush=False,
+        autocommit=False,
+        expire_on_commit=False,
+    )
+    Base.metadata.create_all(bind=engine)
+
+    def override_get_db() -> Generator[Session, None, None]:
+        db = TestingSessionLocal()
+        try:
+            yield db
+        finally:
+            db.close()
+
+    app = create_app()
+    app.dependency_overrides[get_db] = override_get_db
+
+    with TestClient(app) as test_client:
+        yield test_client
+
+    app.dependency_overrides.clear()
+    Base.metadata.drop_all(bind=engine)
+
+
+def create_portfolio(client: TestClient) -> dict:
+    response = client.post(
+        "/api/portfolios",
+        json={"name": "Upload Portfolio", "base_currency": "USD"},
+    )
+    assert response.status_code == 201
+    return response.json()
+
+
+def upload_csv(client: TestClient, portfolio_id: str, content: str) -> dict:
+    response = client.post(
+        f"/api/portfolios/{portfolio_id}/uploads",
+        files={"file": ("holdings.csv", content.encode("utf-8"), "text/csv")},
+    )
+    assert response.status_code == 201
+    return response.json()
+
+
+def upload_xlsx(client: TestClient, portfolio_id: str, rows: list[list[object]]) -> dict:
+    workbook = Workbook()
+    sheet = workbook.active
+    for row in rows:
+        sheet.append(row)
+    buffer = io.BytesIO()
+    workbook.save(buffer)
+    buffer.seek(0)
+
+    response = client.post(
+        f"/api/portfolios/{portfolio_id}/uploads",
+        files={
+            "file": (
+                "holdings.xlsx",
+                buffer.getvalue(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+    assert response.status_code == 201
+    return response.json()
+
+
+def apply_mapping(client: TestClient, upload_job_id: str) -> dict:
+    response = client.post(
+        f"/api/uploads/{upload_job_id}/column-mapping",
+        json={
+            "mapping": {
+                "symbol": "Ticker",
+                "company_name": "Name",
+                "quantity": "Shares",
+                "average_cost": "Average Cost",
+                "market_value": "Market Value",
+                "currency": "Currency",
+                "sector": "Sector",
+                "asset_class": "Asset Class",
+                "exchange": "Exchange",
+            }
+        },
+    )
+    assert response.status_code == 200
+    return response.json()
+
+
+def validate_upload(client: TestClient, upload_job_id: str) -> dict:
+    response = client.post(f"/api/uploads/{upload_job_id}/validate")
+    assert response.status_code == 200
+    return response.json()
+
+
+def confirm_upload(client: TestClient, upload_job_id: str) -> dict:
+    response = client.post(f"/api/uploads/{upload_job_id}/confirm")
+    assert response.status_code == 200
+    return response.json()
+
+
+def test_valid_csv_upload(client: TestClient) -> None:
+    portfolio = create_portfolio(client)
+    upload = upload_csv(
+        client,
+        portfolio["id"],
+        "Ticker,Name,Shares,Average Cost,Market Value,Currency,Sector,Asset Class,Exchange\n"
+        "AAPL,Apple Inc.,10,100,1250,USD,Technology,Equity,NASDAQ\n",
+    )
+
+    assert upload["status"] == "uploaded"
+    assert upload["total_rows"] == 1
+    assert upload["detected_columns"] == [
+        "Ticker",
+        "Name",
+        "Shares",
+        "Average Cost",
+        "Market Value",
+        "Currency",
+        "Sector",
+        "Asset Class",
+        "Exchange",
+    ]
+    assert upload["preview_rows"][0]["Ticker"] == "AAPL"
+
+
+def test_valid_xlsx_upload(client: TestClient) -> None:
+    portfolio = create_portfolio(client)
+    upload = upload_xlsx(
+        client,
+        portfolio["id"],
+        [
+            ["Ticker", "Name", "Shares", "Average Cost", "Market Value", "Currency"],
+            ["MSFT", "Microsoft", 5, 200, 1500, "USD"],
+        ],
+    )
+
+    assert upload["status"] == "uploaded"
+    assert upload["total_rows"] == 1
+    assert upload["preview_rows"][0]["Ticker"] == "MSFT"
+
+
+def test_missing_symbol_rejected(client: TestClient) -> None:
+    portfolio = create_portfolio(client)
+    upload = upload_csv(
+        client,
+        portfolio["id"],
+        "Ticker,Name,Shares,Average Cost,Market Value,Currency,Sector,Asset Class,Exchange\n"
+        ",Missing Symbol,10,100,1000,USD,Technology,Equity,NASDAQ\n",
+    )
+    apply_mapping(client, upload["id"])
+    validation = validate_upload(client, upload["id"])
+
+    assert validation["upload_job"]["valid_rows"] == 0
+    assert validation["upload_job"]["invalid_rows"] == 1
+    assert validation["rows"][0]["status"] == "invalid"
+    assert "symbol is required" in validation["rows"][0]["validation_errors"]
+
+
+def test_invalid_quantity_rejected(client: TestClient) -> None:
+    portfolio = create_portfolio(client)
+    upload = upload_csv(
+        client,
+        portfolio["id"],
+        "Ticker,Name,Shares,Average Cost,Market Value,Currency,Sector,Asset Class,Exchange\n"
+        "AAPL,Apple Inc.,0,100,1000,USD,Technology,Equity,NASDAQ\n",
+    )
+    apply_mapping(client, upload["id"])
+    validation = validate_upload(client, upload["id"])
+
+    assert validation["upload_job"]["valid_rows"] == 0
+    assert "quantity must be a positive number" in validation["rows"][0]["validation_errors"]
+
+
+def test_mapping_required(client: TestClient) -> None:
+    portfolio = create_portfolio(client)
+    upload = upload_csv(
+        client,
+        portfolio["id"],
+        "Ticker,Name,Shares,Average Cost,Market Value,Currency,Sector,Asset Class,Exchange\n"
+        "AAPL,Apple Inc.,10,100,1000,USD,Technology,Equity,NASDAQ\n",
+    )
+
+    response = client.post(f"/api/uploads/{upload['id']}/validate")
+
+    assert response.status_code == 422
+    assert response.json()["error"]["message"] == "Column mapping is required before validation"
+
+
+def test_confirm_import_creates_holdings(client: TestClient) -> None:
+    portfolio = create_portfolio(client)
+    upload = upload_csv(
+        client,
+        portfolio["id"],
+        "Ticker,Name,Shares,Average Cost,Market Value,Currency,Sector,Asset Class,Exchange\n"
+        "AAPL,Apple Inc.,10,100,1250,USD,Technology,Equity,NASDAQ\n",
+    )
+    apply_mapping(client, upload["id"])
+    validate_upload(client, upload["id"])
+    confirm = confirm_upload(client, upload["id"])
+    holdings = client.get(f"/api/portfolios/{portfolio['id']}/holdings")
+
+    assert confirm["status"] == "imported"
+    assert confirm["imported_count"] == 1
+    assert holdings.status_code == 200
+    assert holdings.json()[0]["symbol"] == "AAPL"
+    assert holdings.json()[0]["current_price"] == 125
+
+
+def test_invalid_rows_do_not_create_holdings(client: TestClient) -> None:
+    portfolio = create_portfolio(client)
+    upload = upload_csv(
+        client,
+        portfolio["id"],
+        "Ticker,Name,Shares,Average Cost,Market Value,Currency,Sector,Asset Class,Exchange\n"
+        "AAPL,Apple Inc.,10,100,1250,USD,Technology,Equity,NASDAQ\n"
+        "BAD,Bad Row,-2,100,200,USD,Technology,Equity,NASDAQ\n",
+    )
+    apply_mapping(client, upload["id"])
+    validate_upload(client, upload["id"])
+    confirm = confirm_upload(client, upload["id"])
+    holdings = client.get(f"/api/portfolios/{portfolio['id']}/holdings").json()
+    errors = client.get(f"/api/uploads/{upload['id']}/errors").json()
+
+    assert confirm["status"] == "partial_imported"
+    assert confirm["imported_count"] == 1
+    assert confirm["invalid_rows"] == 1
+    assert len(holdings) == 1
+    assert holdings[0]["symbol"] == "AAPL"
+    assert len(errors["errors"]) == 1
+
+
+def test_duplicate_symbols_are_skipped(client: TestClient) -> None:
+    portfolio = create_portfolio(client)
+    existing = client.post(
+        f"/api/portfolios/{portfolio['id']}/holdings",
+        json={"symbol": "AAPL", "quantity": 1, "average_cost": 90, "current_price": 100},
+    )
+    assert existing.status_code == 201
+
+    upload = upload_csv(
+        client,
+        portfolio["id"],
+        "Ticker,Name,Shares,Average Cost,Market Value,Currency,Sector,Asset Class,Exchange\n"
+        "AAPL,Apple Inc.,10,100,1250,USD,Technology,Equity,NASDAQ\n"
+        "MSFT,Microsoft,5,200,1500,USD,Technology,Equity,NASDAQ\n"
+        "MSFT,Microsoft Duplicate,3,200,900,USD,Technology,Equity,NASDAQ\n",
+    )
+    apply_mapping(client, upload["id"])
+    validate_upload(client, upload["id"])
+    confirm = confirm_upload(client, upload["id"])
+    holdings = client.get(f"/api/portfolios/{portfolio['id']}/holdings").json()
+
+    assert confirm["status"] == "partial_imported"
+    assert confirm["imported_count"] == 1
+    assert confirm["skipped_count"] == 2
+    assert any("AAPL skipped" in warning for warning in confirm["warnings"])
+    assert sorted(holding["symbol"] for holding in holdings) == ["AAPL", "MSFT"]
