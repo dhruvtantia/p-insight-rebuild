@@ -329,10 +329,157 @@ Provider behavior:
 
 ## Analytics
 
-- `GET /api/v1/portfolios/{portfolio_id}/analytics`
-- `GET /api/v1/portfolios/{portfolio_id}/insights`
+- `GET /api/portfolios/{portfolio_id}/analytics/summary`
+- `GET /api/portfolios/{portfolio_id}/analytics/allocation`
+- `GET /api/portfolios/{portfolio_id}/analytics/risk`
+- `GET /api/portfolios/{portfolio_id}/analytics/performance`
+- `GET /api/portfolios/{portfolio_id}/analytics/rules`
+- `POST /api/portfolios/{portfolio_id}/analytics/recalculate`
 
 Purpose: backend-owned analytics and rule-based insights.
+
+Summary response:
+
+```json
+{
+  "portfolio_id": "portfolio-id",
+  "base_currency": "USD",
+  "total_portfolio_value": 4000,
+  "total_cost_basis": 2500,
+  "total_unrealized_gain_loss": 1500,
+  "total_unrealized_gain_loss_pct": 0.6,
+  "largest_holding": {
+    "symbol": "AAPL",
+    "market_value": 2000,
+    "weight": 0.5
+  },
+  "holdings": [
+    {
+      "holding_id": "holding-id",
+      "symbol": "AAPL",
+      "quantity": 10,
+      "average_cost": 100,
+      "current_price": 200,
+      "currency": "USD",
+      "sector": "Technology",
+      "asset_class": "Equity",
+      "market_value": 2000,
+      "cost_basis": 1000,
+      "unrealized_gain_loss": 1000,
+      "unrealized_gain_loss_pct": 1,
+      "weight": 0.5
+    }
+  ]
+}
+```
+
+Allocation response:
+
+```json
+{
+  "asset_allocation": [
+    {
+      "name": "Equity",
+      "value": 2000,
+      "weight": 0.5,
+      "symbols": ["AAPL"]
+    }
+  ],
+  "sector_allocation": [
+    {
+      "name": "Technology",
+      "value": 2000,
+      "weight": 0.5,
+      "symbols": ["AAPL"]
+    }
+  ],
+  "currency_exposure": [
+    {
+      "name": "USD",
+      "value": 4000,
+      "weight": 1,
+      "symbols": ["AAPL", "VOO"]
+    }
+  ]
+}
+```
+
+Risk response:
+
+```json
+{
+  "volatility": {
+    "value": null,
+    "status": "insufficient_history",
+    "message": "Historical price data is not available yet."
+  },
+  "sharpe_ratio": {
+    "value": null,
+    "status": "insufficient_history",
+    "message": "Historical price data is not available yet."
+  },
+  "max_drawdown": {
+    "value": null,
+    "status": "insufficient_history",
+    "message": "Historical price data is not available yet."
+  },
+  "concentration": {
+    "status": "high",
+    "largest_holding": {
+      "symbol": "AAPL",
+      "market_value": 3000,
+      "weight": 0.75
+    },
+    "top_5_weight": 1,
+    "message": "AAPL represents 75% of the portfolio."
+  }
+}
+```
+
+Performance response:
+
+```json
+{
+  "total_cost_basis": 2500,
+  "total_unrealized_gain_loss": 1500,
+  "total_unrealized_gain_loss_pct": 0.6,
+  "top_gainers": [
+    {
+      "symbol": "AAPL",
+      "unrealized_gain_loss": 1000,
+      "unrealized_gain_loss_pct": 1
+    }
+  ],
+  "top_losers": []
+}
+```
+
+Rules response:
+
+```json
+[
+  {
+    "rule_id": "HIGH_CONCENTRATION",
+    "severity": "high",
+    "title": "High concentration risk",
+    "message": "AAPL represents 32% of your portfolio.",
+    "affected_symbols": ["AAPL"]
+  }
+]
+```
+
+Implemented rule IDs:
+- `HIGH_CONCENTRATION` when one holding is more than 25% of priced portfolio value.
+- `MODERATE_CONCENTRATION` when one holding is more than 15% of priced portfolio value.
+- `MISSING_PRICE_DATA` when holdings have no `current_price`.
+- `MISSING_COST_BASIS` when holdings have no `average_cost`.
+- `SINGLE_ASSET_CLASS` when all holdings have the same `asset_class`.
+- `CURRENCY_EXPOSURE` when non-base-currency exposure is more than 20% of priced portfolio value.
+
+Recalculate behavior:
+- `POST /api/portfolios/{portfolio_id}/analytics/recalculate` computes the full analytics bundle.
+- It stores `summary`, `allocation`, `risk`, `performance`, `rules`, and `analytics_bundle` records in `analytics_results`.
+- Empty portfolios and missing prices return zero/empty analytics instead of failing.
 
 ## AI Advisor
 

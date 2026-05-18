@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import get_settings
 from app.core.errors import register_exception_handlers
 from app.core.logging import configure_logging
+from app.modules.analytics.router import router as analytics_router
 from app.modules.holdings.router import router as holdings_router
 from app.modules.health.router import router as health_router
 from app.modules.market_data.router import router as market_data_router
@@ -29,6 +30,7 @@ def create_app() -> FastAPI:
     app.include_router(portfolios_router)
     app.include_router(holdings_router)
     app.include_router(market_data_router)
+    app.include_router(analytics_router)
     app.include_router(uploads_router)
     return app
 
