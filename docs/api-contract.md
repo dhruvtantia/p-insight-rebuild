@@ -483,10 +483,144 @@ Recalculate behavior:
 
 ## AI Advisor
 
-- `POST /api/v1/portfolios/{portfolio_id}/advisor/questions`
-- `GET /api/v1/portfolios/{portfolio_id}/advisor/context`
+- `POST /api/portfolios/{portfolio_id}/ai/summary`
+- `POST /api/portfolios/{portfolio_id}/ai/question`
+- `GET /api/portfolios/{portfolio_id}/ai/conversations`
+- `GET /api/ai/conversations/{conversation_id}`
 
 Purpose: AI explanations generated only from structured backend portfolio context.
+
+Context shape:
+
+```json
+{
+  "portfolio_summary": {
+    "id": "portfolio-id",
+    "name": "Core Portfolio",
+    "base_currency": "USD",
+    "benchmark_symbol": "SPY",
+    "risk_free_rate": 0.04,
+    "total_portfolio_value": 4000,
+    "total_cost_basis": 2500,
+    "total_unrealized_gain_loss": 1500,
+    "total_unrealized_gain_loss_pct": 0.6,
+    "largest_holding": {
+      "symbol": "AAPL",
+      "market_value": 2000,
+      "weight": 0.5
+    },
+    "holdings_count": 2
+  },
+  "holdings": [],
+  "risk_metrics": {},
+  "allocation": {},
+  "rule_based_insights": [],
+  "price_freshness": {
+    "priced_symbols": ["AAPL"],
+    "missing_price_symbols": [],
+    "latest_price_as_of": "2026-01-01T00:00:00Z",
+    "latest_price_source": "mock"
+  },
+  "user_question": ""
+}
+```
+
+Summary request:
+
+```http
+POST /api/portfolios/{portfolio_id}/ai/summary
+Content-Type: application/json
+
+{}
+```
+
+Question request:
+
+```json
+{
+  "question": "What concentration risk should I review?"
+}
+```
+
+AI response:
+
+```json
+{
+  "conversation_id": "conversation-id",
+  "mode": "question",
+  "provider": "mock",
+  "model": "deterministic-advisor-v1",
+  "response": "Based on the provided data, ...",
+  "context": {
+    "portfolio_summary": {},
+    "holdings": [],
+    "risk_metrics": {},
+    "allocation": {},
+    "rule_based_insights": [],
+    "price_freshness": {},
+    "user_question": "What concentration risk should I review?"
+  },
+  "created_at": "2026-05-19T00:00:00Z"
+}
+```
+
+Conversation list response:
+
+```json
+[
+  {
+    "id": "conversation-id",
+    "portfolio_id": "portfolio-id",
+    "title": "Summary for Core Portfolio",
+    "mode": "summary",
+    "created_at": "2026-05-19T00:00:00Z",
+    "updated_at": "2026-05-19T00:00:00Z"
+  }
+]
+```
+
+Conversation detail response:
+
+```json
+{
+  "id": "conversation-id",
+  "portfolio_id": "portfolio-id",
+  "title": "Summary for Core Portfolio",
+  "mode": "summary",
+  "context": {},
+  "messages": [
+    {
+      "id": "message-id",
+      "conversation_id": "conversation-id",
+      "role": "user",
+      "content": "Summarize this portfolio.",
+      "provider": null,
+      "model": null,
+      "metadata": {
+        "mode": "summary"
+      },
+      "created_at": "2026-05-19T00:00:00Z"
+    }
+  ],
+  "created_at": "2026-05-19T00:00:00Z",
+  "updated_at": "2026-05-19T00:00:00Z"
+}
+```
+
+Provider behavior:
+- If no `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` is configured, the backend returns deterministic mock advisor responses.
+- If provider keys exist, the code records provider-ready model metadata but still uses the deterministic MVP response path until real provider calls are implemented.
+- No frontend AI keys are required or exposed.
+
+Safety language:
+- Advisor responses are educational and non-directive.
+- Responses avoid phrases such as direct buy/sell instructions, guaranteed returns, or claims that something will outperform.
+- Preferred phrasing includes "Based on the provided data", "This suggests", "One risk to review is", and "You may want to compare".
+
+Persistence:
+- Each summary or question request creates an `AIConversation`.
+- The system prompt, user message, and assistant response are persisted as `AIMessage` records.
+- Conversation context stores mode and structured context JSON.
 
 ## Watchlist
 
