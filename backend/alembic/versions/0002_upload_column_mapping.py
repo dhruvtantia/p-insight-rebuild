@@ -16,12 +16,13 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "upload_jobs",
-        sa.Column("column_mapping_json", sa.Text(), nullable=False, server_default="{}"),
-    )
-    op.alter_column("upload_jobs", "column_mapping_json", server_default=None)
+    with op.batch_alter_table("upload_jobs") as batch_op:
+        batch_op.add_column(
+            sa.Column("column_mapping_json", sa.Text(), nullable=False, server_default="{}")
+        )
+        batch_op.alter_column("column_mapping_json", server_default=None)
 
 
 def downgrade() -> None:
-    op.drop_column("upload_jobs", "column_mapping_json")
+    with op.batch_alter_table("upload_jobs") as batch_op:
+        batch_op.drop_column("column_mapping_json")
