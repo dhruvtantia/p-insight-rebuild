@@ -1,4 +1,4 @@
-import { AlertTriangle, BarChart3, Clock, PieChart, Plus, RefreshCw, Upload, WalletCards } from "lucide-react";
+import { AlertTriangle, BarChart3, Bot, Clock, PieChart, Plus, RefreshCw, Upload, WalletCards } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
   Bar,
@@ -90,6 +90,7 @@ export function DashboardPage() {
         errorMessage={portfolioPrices.refreshPrices.error?.message}
         onRefresh={() => portfolioPrices.refreshPrices.mutate()}
       />
+      <AIAdvisorCard isEmptyPortfolio={isEmptyPortfolio} topRule={rules[0]} />
 
       {isEmptyPortfolio ? (
         <EmptyPortfolioCta />
@@ -209,6 +210,34 @@ function PriceActionPanel({
           <ErrorState title="Price refresh failed" detail={errorMessage} />
         </div>
       ) : null}
+    </Card>
+  );
+}
+
+function AIAdvisorCard({ isEmptyPortfolio, topRule }: { isEmptyPortfolio: boolean; topRule?: RuleInsight }) {
+  return (
+    <Card>
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-start gap-3">
+          <Bot className="mt-0.5 text-accent" size={22} />
+          <div>
+            <CardTitle>AI summary</CardTitle>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              {isEmptyPortfolio
+                ? "Ask the advisor what data is needed before portfolio analysis becomes useful."
+                : topRule
+                  ? `Start with this active insight: ${topRule.message}`
+                  : "Generate a backend-context summary or ask a question about allocation, risk, or missing data."}
+            </p>
+          </div>
+        </div>
+        <Link to="/advisor">
+          <Button>
+            <Bot size={16} />
+            Open AI Advisor
+          </Button>
+        </Link>
+      </div>
     </Card>
   );
 }
