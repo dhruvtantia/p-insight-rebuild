@@ -10,7 +10,9 @@ VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
 VITE_APP_ENV=
 VITE_POSTHOG_KEY=
+VITE_GA_MEASUREMENT_ID=
 VITE_SENTRY_DSN=
+VITE_BETA_FEEDBACK_URL=
 ```
 
 Frontend variables must not include market data provider keys, AI provider keys, broker secrets, service role keys, or Stripe secret keys.
@@ -22,6 +24,7 @@ APP_NAME=P-insight
 APP_ENV=local
 SERVICE_NAME=p-insight-backend
 CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+FRONTEND_URL=
 DATABASE_URL=
 SUPABASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=

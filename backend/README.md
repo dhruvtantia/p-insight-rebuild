@@ -59,3 +59,15 @@ alembic upgrade head
 ```
 
 Set `DATABASE_URL` before running migrations against a real database.
+
+## Deployment
+
+Private beta hosting can use Render or Railway.
+
+Start command:
+
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port $PORT
+```
+
+Set `FRONTEND_URL` to the deployed Vercel URL so production CORS allows the frontend. Keep local Vite origins in `CORS_ORIGINS` for development.

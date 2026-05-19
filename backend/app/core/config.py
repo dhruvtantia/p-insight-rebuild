@@ -23,6 +23,11 @@ class Settings(BaseSettings):
     supabase_url: str | None = None
     supabase_service_role_key: str | None = None
     jwt_secret: str | None = None
+    frontend_url: str | None = Field(
+        default=None,
+        description="Public frontend URL allowed by production CORS, for example https://p-insight.vercel.app",
+    )
+    sentry_dsn: str | None = None
 
     cors_origins: str = Field(
         default="http://localhost:5173,http://127.0.0.1:5173",
@@ -34,7 +39,10 @@ class Settings(BaseSettings):
     @computed_field
     @property
     def cors_origin_list(self) -> list[str]:
-        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+        origins = [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+        if self.frontend_url:
+            origins.append(self.frontend_url.strip())
+        return list(dict.fromkeys(origin for origin in origins if origin))
 
 
 @lru_cache

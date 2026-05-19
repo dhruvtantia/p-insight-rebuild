@@ -12,7 +12,9 @@ VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
 VITE_APP_ENV=local
 VITE_POSTHOG_KEY=
+VITE_GA_MEASUREMENT_ID=
 VITE_SENTRY_DSN=
+VITE_BETA_FEEDBACK_URL=https://example.com/p-insight-beta-feedback
 ```
 
 Frontend code must not include market data, AI, broker, or payment secret keys.
@@ -37,3 +39,14 @@ npm run build
 ```
 
 Vite 8 requires Node.js `^20.19.0` or `>=22.12.0`.
+
+## Vercel
+
+Use these private beta settings:
+
+- Root directory: `frontend`
+- Build command: `npm run build`
+- Output directory: `dist`
+- Required API variable: `VITE_API_BASE_URL=https://your-backend.example.com`
+
+`frontend/vercel.json` includes a React Router rewrite to `index.html`.
