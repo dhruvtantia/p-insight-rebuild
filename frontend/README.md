@@ -11,10 +11,11 @@ VITE_API_BASE_URL=http://localhost:8000
 VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
 VITE_APP_ENV=local
+VITE_ENABLE_DEMO_MODE=false
 VITE_POSTHOG_KEY=
 VITE_GA_MEASUREMENT_ID=
 VITE_SENTRY_DSN=
-VITE_BETA_FEEDBACK_URL=https://example.com/p-insight-beta-feedback
+VITE_BETA_FEEDBACK_URL=
 ```
 
 Frontend code must not include market data, AI, broker, or payment secret keys.

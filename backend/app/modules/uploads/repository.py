@@ -3,6 +3,7 @@ import json
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
+from app.core.json import safe_json_dict, safe_json_list
 from app.db.models import Holding, Portfolio, UploadJob, UploadRow
 
 
@@ -133,16 +134,16 @@ class UploadRepository:
 
 
 def row_raw_data(row: UploadRow) -> dict:
-    return json.loads(row.raw_data_json)
+    return safe_json_dict(row.raw_data_json)
 
 
 def row_mapped_data(row: UploadRow) -> dict:
-    return json.loads(row.mapped_data_json)
+    return safe_json_dict(row.mapped_data_json)
 
 
 def row_errors(row: UploadRow) -> list[str]:
-    return json.loads(row.validation_errors_json)
+    return [str(error) for error in safe_json_list(row.validation_errors_json)]
 
 
 def job_mapping(upload_job: UploadJob) -> dict[str, str]:
-    return json.loads(upload_job.column_mapping_json or "{}")
+    return {str(key): str(value) for key, value in safe_json_dict(upload_job.column_mapping_json).items()}

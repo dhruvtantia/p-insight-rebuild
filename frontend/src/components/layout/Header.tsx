@@ -1,6 +1,7 @@
 import { MessageSquare, Menu, Search } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
+import { betaFeedbackUrl } from "../../lib/env";
 import { Button, Input } from "../ui";
 
 const pageTitles: Record<string, string> = {
@@ -23,7 +24,6 @@ const pageTitles: Record<string, string> = {
 export function Header() {
   const location = useLocation();
   const title = pageTitles[location.pathname] ?? "P-insight";
-  const betaFeedbackUrl = import.meta.env.VITE_BETA_FEEDBACK_URL || "https://example.com/p-insight-beta-feedback";
 
   return (
     <header className="sticky top-0 z-10 border-b border-line bg-white/95 backdrop-blur">
@@ -46,15 +46,17 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-2">
-          <a
-            href={betaFeedbackUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-line bg-white px-3 text-sm font-semibold text-ink transition hover:bg-surface"
-          >
-            <MessageSquare size={16} />
-            <span className="hidden sm:inline">Feedback</span>
-          </a>
+          {betaFeedbackUrl ? (
+            <a
+              href={betaFeedbackUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-line bg-white px-3 text-sm font-semibold text-ink transition hover:bg-surface"
+            >
+              <MessageSquare size={16} />
+              <span className="hidden sm:inline">Feedback</span>
+            </a>
+          ) : null}
           <Link to="/login" className="hidden text-sm font-medium text-slate-600 hover:text-ink sm:inline">
             Log in
           </Link>

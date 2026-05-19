@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 
 import { Badge, Button, Card, CardTitle, ErrorState } from "../components/ui";
 import { useDemoSeed } from "../hooks/useDemoSeed";
+import { demoModeEnabled } from "../lib/env";
 
 const features = [
   {
@@ -46,22 +47,24 @@ export function LandingPage() {
                 <ArrowRight size={16} />
               </Button>
             </Link>
-            <Button
-              variant="secondary"
-              disabled={demoSeed.isPending}
-              onClick={() =>
-                demoSeed.mutate(undefined, {
-                  onSuccess: () => navigate("/dashboard")
-                })
-              }
-            >
-              {demoSeed.isPending ? "Seeding demo" : "Try demo portfolio"}
-            </Button>
+            {demoModeEnabled ? (
+              <Button
+                variant="secondary"
+                disabled={demoSeed.isPending}
+                onClick={() =>
+                  demoSeed.mutate(undefined, {
+                    onSuccess: () => navigate("/dashboard")
+                  })
+                }
+              >
+                {demoSeed.isPending ? "Seeding demo" : "Try demo portfolio"}
+              </Button>
+            ) : null}
             <Link to="/dashboard">
               <Button variant="secondary">View dashboard shell</Button>
             </Link>
           </div>
-          {demoSeed.isError ? (
+          {demoModeEnabled && demoSeed.isError ? (
             <ErrorState title="Could not start demo" detail={demoSeed.error.message} />
           ) : null}
         </div>

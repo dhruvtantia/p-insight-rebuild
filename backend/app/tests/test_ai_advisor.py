@@ -193,6 +193,34 @@ def test_conversation_is_saved(client: TestClient) -> None:
         assert len(messages) == 3
 
 
+def test_conversation_detail_handles_invalid_persisted_json(client: TestClient) -> None:
+    portfolio = seed_portfolio(client)
+    response = client.post(
+        f"/api/portfolios/{portfolio['id']}/ai/question",
+        json={"question": "What data is missing?"},
+    )
+    assert response.status_code == 200
+    conversation_id = response.json()["conversation_id"]
+
+    SessionLocal = client.app.state.testing_session_local
+    with SessionLocal() as db:
+        conversation = db.get(AIConversation, conversation_id)
+        assert conversation is not None
+        conversation.context_json = "{not-json"
+        messages = db.scalars(select(AIMessage).where(AIMessage.conversation_id == conversation_id)).all()
+        assert messages
+        messages[0].metadata_json = "{not-json"
+        db.commit()
+
+    detail_response = client.get(f"/api/ai/conversations/{conversation_id}")
+
+    assert detail_response.status_code == 200
+    body = detail_response.json()
+    assert body["context"] == {}
+    assert body["mode"] is None
+    assert body["messages"][0]["metadata"] == {}
+
+
 def test_empty_portfolio_handled_safely(client: TestClient) -> None:
     portfolio = create_portfolio(client, name="Empty AI Portfolio")
 

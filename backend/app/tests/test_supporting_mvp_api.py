@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.db import models  # noqa: F401
 from app.db.base import Base
+from app.db.models import BrokerConnection
 from app.db.session import get_db
 from app.main import create_app
 
@@ -35,6 +36,7 @@ def client(tmp_path) -> Generator[TestClient, None, None]:
 
     app = create_app()
     app.dependency_overrides[get_db] = override_get_db
+    app.state.testing_session_local = TestingSessionLocal
 
     with TestClient(app) as test_client:
         yield test_client
@@ -93,6 +95,28 @@ def test_broker_placeholder_endpoints(client: TestClient) -> None:
     delete_response = client.delete(f"/api/broker-connections/{connection['id']}")
     assert delete_response.status_code == 204
     assert client.get("/api/broker-connections").json() == []
+
+
+def test_broker_connection_handles_invalid_metadata_json(client: TestClient) -> None:
+    create_response = client.post("/api/broker-connections/connect-placeholder", json={"provider": "Plaid"})
+    assert create_response.status_code == 201
+    connection_id = create_response.json()["id"]
+
+    SessionLocal = client.app.state.testing_session_local
+    with SessionLocal() as db:
+        connection = db.get(BrokerConnection, connection_id)
+        assert connection is not None
+        connection.metadata_json = "{not-json"
+        db.add(connection)
+        db.commit()
+
+    list_response = client.get("/api/broker-connections")
+
+    assert list_response.status_code == 200
+    connection = list_response.json()[0]
+    assert connection["id"] == connection_id
+    assert connection["metadata"] == {}
+    assert connection["message"] == "Broker sync is coming soon."
 
 
 def test_billing_placeholder_endpoints(client: TestClient) -> None:

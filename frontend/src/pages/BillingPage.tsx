@@ -2,6 +2,7 @@ import { CheckCircle2, CreditCard, Lock } from "lucide-react";
 
 import { Badge, Button, Card, CardTitle, ErrorState, LoadingState } from "../components/ui";
 import { useBilling } from "../hooks/useBilling";
+import { demoModeEnabled } from "../lib/env";
 import type { BillingPlan } from "../types/billing";
 
 export function BillingPage() {
@@ -25,14 +26,16 @@ export function BillingPage() {
             <CardTitle>Current plan: {billing.plan.data.current_plan}</CardTitle>
             <p className="mt-2 text-sm leading-6 text-slate-600">{billing.plan.data.message}</p>
           </div>
-          <Button
-            type="button"
-            disabled={billing.createCheckoutSession.isPending}
-            onClick={() => billing.createCheckoutSession.mutate()}
-          >
-            <CreditCard size={16} />
-            {billing.createCheckoutSession.isPending ? "Opening" : "Checkout placeholder"}
-          </Button>
+          {demoModeEnabled ? (
+            <Button
+              type="button"
+              disabled={billing.createCheckoutSession.isPending}
+              onClick={() => billing.createCheckoutSession.mutate()}
+            >
+              <CreditCard size={16} />
+              {billing.createCheckoutSession.isPending ? "Opening" : "Checkout placeholder"}
+            </Button>
+          ) : null}
         </div>
         {billing.createCheckoutSession.data ? (
           <p className="mt-3 text-sm text-slate-600">{billing.createCheckoutSession.data.message}</p>

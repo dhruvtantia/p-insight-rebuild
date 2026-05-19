@@ -9,6 +9,7 @@ VITE_API_BASE_URL=
 VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
 VITE_APP_ENV=
+VITE_ENABLE_DEMO_MODE=
 VITE_POSTHOG_KEY=
 VITE_GA_MEASUREMENT_ID=
 VITE_SENTRY_DSN=
@@ -23,6 +24,7 @@ Frontend variables must not include market data provider keys, AI provider keys,
 APP_NAME=P-insight
 APP_ENV=local
 SERVICE_NAME=p-insight-backend
+ENABLE_DEMO_MODE=false
 CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 FRONTEND_URL=
 DATABASE_URL=

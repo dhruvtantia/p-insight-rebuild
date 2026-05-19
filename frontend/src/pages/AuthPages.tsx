@@ -4,7 +4,8 @@ import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
 
-import { Button, Card, CardTitle, Input } from "../components/ui";
+import { Button, Card, CardTitle, EmptyState, Input } from "../components/ui";
+import { demoModeEnabled } from "../lib/env";
 
 const authSchema = z.object({
   email: z.string().email(),
@@ -28,6 +29,14 @@ function AuthForm({ mode }: { mode: "login" | "signup" }) {
     defaultValues: { email: "", password: "" }
   });
   const isSignup = mode === "signup";
+
+  if (!demoModeEnabled) {
+    return (
+      <div className="mx-auto max-w-md py-8">
+        <EmptyState title="Auth is not enabled" detail="Production auth is not implemented for this beta build." />
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-md py-8">

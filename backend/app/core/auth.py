@@ -4,6 +4,8 @@ from fastapi import Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
+from app.core.errors import PermissionDeniedError
 from app.db.models import User
 from app.db.session import get_db
 
@@ -17,6 +19,11 @@ def get_development_user(db: Annotated[Session, Depends(get_db)]) -> User:
     This deterministic user is intentionally temporary and will be replaced by
     Supabase Auth or Clerk in a later auth phase.
     """
+    if not get_settings().demo_mode_enabled:
+        raise PermissionDeniedError(
+            "Demo auth is disabled outside local mode. Set ENABLE_DEMO_MODE=true only for an explicit demo environment."
+        )
+
     user = db.scalar(select(User).where(User.email == DEMO_USER_EMAIL))
     if user is not None:
         return user

@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     app_env: str = "local"
     service_name: str = "p-insight-backend"
     api_prefix: str = "/api"
+    enable_demo_mode: bool = False
 
     database_url: str = "postgresql+psycopg2://postgres:postgres@localhost:5432/p_insight"
 
@@ -43,6 +44,11 @@ class Settings(BaseSettings):
         if self.frontend_url:
             origins.append(self.frontend_url.strip())
         return list(dict.fromkeys(origin for origin in origins if origin))
+
+    @computed_field
+    @property
+    def demo_mode_enabled(self) -> bool:
+        return self.app_env.strip().lower() == "local" or self.enable_demo_mode
 
 
 @lru_cache

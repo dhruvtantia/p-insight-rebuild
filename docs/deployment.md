@@ -16,6 +16,7 @@ Backend environment variables:
 APP_NAME=P-insight
 APP_ENV=production
 SERVICE_NAME=p-insight-backend
+ENABLE_DEMO_MODE=false
 DATABASE_URL=postgresql+psycopg2://USER:PASSWORD@HOST:PORT/postgres
 FRONTEND_URL=https://your-vercel-app.vercel.app
 CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
@@ -38,6 +39,7 @@ VITE_API_BASE_URL=https://your-backend.example.com
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=
 VITE_APP_ENV=production
+VITE_ENABLE_DEMO_MODE=false
 VITE_POSTHOG_KEY=
 VITE_GA_MEASUREMENT_ID=
 VITE_SENTRY_DSN=
@@ -156,3 +158,9 @@ Product analytics are also placeholders:
 - Google Analytics: `VITE_GA_MEASUREMENT_ID`
 
 No real Sentry, PostHog, or GA key is required to run the app.
+
+## Demo Mode
+
+Demo auth and `/api/demo/seed` are enabled automatically only when `APP_ENV=local`. In any hosted beta environment, keep `ENABLE_DEMO_MODE=false` unless you are intentionally deploying a shared demo sandbox.
+
+On the frontend, set `VITE_ENABLE_DEMO_MODE=false` for production beta. Demo and placeholder CTAs are hidden unless `VITE_APP_ENV=local` or `VITE_ENABLE_DEMO_MODE=true`.

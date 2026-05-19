@@ -46,8 +46,11 @@ class AnalyticsService:
     def get_rules(self, *, portfolio_id: str, user: User) -> list[RuleInsight]:
         return self._build_bundle(portfolio_id=portfolio_id, user=user).rules
 
+    def build_bundle(self, *, portfolio_id: str, user: User) -> PortfolioAnalyticsBundle:
+        return self._build_bundle(portfolio_id=portfolio_id, user=user)
+
     def recalculate(self, *, portfolio_id: str, user: User) -> AnalyticsRecalculateResponse:
-        bundle = self._build_bundle(portfolio_id=portfolio_id, user=user)
+        bundle = self.build_bundle(portfolio_id=portfolio_id, user=user)
         stored_results = [
             self._store_result(portfolio_id=portfolio_id, result_type="summary", payload=bundle.summary),
             self._store_result(portfolio_id=portfolio_id, result_type="allocation", payload=bundle.allocation),

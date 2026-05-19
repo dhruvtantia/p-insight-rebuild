@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 import { Badge, Button, Card, CardTitle, EmptyState, ErrorState, LoadingState, Table, Td, Th } from "../components/ui";
 import { useBrokerConnections } from "../hooks/useBrokerConnections";
+import { demoModeEnabled } from "../lib/env";
 
 export function BrokerConnectionsPage() {
   const brokers = useBrokerConnections();
@@ -43,21 +44,23 @@ export function BrokerConnectionsPage() {
                 </div>
                 <h3 className="mt-4 text-lg font-semibold text-ink">{provider.display_name}</h3>
                 <p className="mt-2 min-h-20 text-sm leading-6 text-slate-600">{provider.message}</p>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="mt-4 w-full"
-                  disabled={brokers.createPlaceholder.isPending}
-                  onClick={() => brokers.createPlaceholder.mutate(provider.display_name)}
-                >
-                  <CheckCircle2 size={16} />
-                  Mark interest
-                </Button>
+                {demoModeEnabled ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="mt-4 w-full"
+                    disabled={brokers.createPlaceholder.isPending}
+                    onClick={() => brokers.createPlaceholder.mutate(provider.display_name)}
+                  >
+                    <CheckCircle2 size={16} />
+                    Mark interest
+                  </Button>
+                ) : null}
               </Card>
             ))}
           </div>
 
-          {brokers.createPlaceholder.isError ? (
+          {demoModeEnabled && brokers.createPlaceholder.isError ? (
             <ErrorState title="Unable to mark interest" detail={brokers.createPlaceholder.error.message} />
           ) : null}
 

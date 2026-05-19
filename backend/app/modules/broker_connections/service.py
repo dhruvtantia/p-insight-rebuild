@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.errors import NotFoundError
+from app.core.json import safe_json_dict
 from app.db.models import BrokerConnection, User
 from app.modules.broker_connections.schemas import (
     BrokerConnectionCreate,
@@ -85,7 +86,7 @@ class BrokerConnectionService:
         return BROKER_PROVIDERS
 
     def _response(self, connection: BrokerConnection) -> BrokerConnectionResponse:
-        metadata = json.loads(connection.metadata_json or "{}")
+        metadata = safe_json_dict(connection.metadata_json)
         return BrokerConnectionResponse(
             id=connection.id,
             provider=connection.provider,

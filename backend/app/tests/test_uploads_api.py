@@ -1,5 +1,6 @@
 import io
 from collections.abc import Generator
+from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
@@ -11,6 +12,7 @@ from app.db import models  # noqa: F401
 from app.db.base import Base
 from app.db.session import get_db
 from app.main import create_app
+from app.modules.uploads.repository import job_mapping, row_errors, row_mapped_data, row_raw_data
 
 
 @pytest.fixture()
@@ -276,3 +278,17 @@ def test_duplicate_symbols_are_skipped(client: TestClient) -> None:
     assert confirm["skipped_count"] == 2
     assert any("AAPL skipped" in warning for warning in confirm["warnings"])
     assert sorted(holding["symbol"] for holding in holdings) == ["AAPL", "MSFT"]
+
+
+def test_upload_json_helpers_return_safe_defaults_for_invalid_json() -> None:
+    row = SimpleNamespace(
+        raw_data_json="{not-json",
+        mapped_data_json="[1, 2]",
+        validation_errors_json='{"not": "a-list"}',
+    )
+    upload_job = SimpleNamespace(column_mapping_json="{not-json")
+
+    assert row_raw_data(row) == {}
+    assert row_mapped_data(row) == {}
+    assert row_errors(row) == []
+    assert job_mapping(upload_job) == {}

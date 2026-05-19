@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.errors import NotFoundError
+from app.core.json import safe_json_dict
 from app.db.models import AIConversation, AIMessage, User
 from app.modules.ai_advisor.context_builder import AIAdvisorContextBuilder
 from app.modules.ai_advisor.prompts import build_prompt
@@ -253,7 +254,7 @@ class AIAdvisorService:
         return user_content[:80]
 
     def _conversation_context(self, conversation: AIConversation) -> dict:
-        return json.loads(conversation.context_json or "{}")
+        return safe_json_dict(conversation.context_json)
 
     def _message_response(self, message: AIMessage) -> AIMessageResponse:
         return AIMessageResponse(
@@ -263,6 +264,6 @@ class AIAdvisorService:
             content=message.content,
             provider=message.provider,
             model=message.model,
-            metadata=json.loads(message.metadata_json or "{}"),
+            metadata=safe_json_dict(message.metadata_json),
             created_at=message.created_at,
         )

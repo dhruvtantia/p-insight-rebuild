@@ -14,7 +14,7 @@ class AIAdvisorContextBuilder:
 
     def build_context(self, *, portfolio_id: str, user: User, user_question: str | None = None) -> dict:
         portfolio = self.portfolio_service.get_portfolio(portfolio_id=portfolio_id, user=user)
-        analytics = self.analytics_service._build_bundle(portfolio_id=portfolio.id, user=user)
+        analytics = self.analytics_service.build_bundle(portfolio_id=portfolio.id, user=user)
         holdings = self._list_holdings(portfolio_id=portfolio.id)
         latest_prices = self._latest_prices_by_symbol([holding.symbol for holding in holdings])
 
