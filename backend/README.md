@@ -38,6 +38,14 @@ Expected response:
 pytest
 ```
 
+## Seed Demo Data
+
+```bash
+python -m app.seed_demo
+```
+
+This creates or refreshes the deterministic demo portfolio for the development user.
+
 ## Development Auth Placeholder
 
 Portfolio and holdings APIs currently use a deterministic demo user dependency. If the demo user does not exist, the backend creates it on first authenticated request. This is temporary and will be replaced by Supabase Auth or Clerk in a later auth phase.

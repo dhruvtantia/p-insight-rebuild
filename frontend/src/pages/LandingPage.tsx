@@ -1,7 +1,8 @@
 import { ArrowRight, BarChart3, Bot, Building2, ShieldCheck } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
-import { Badge, Button, Card, CardTitle } from "../components/ui";
+import { Badge, Button, Card, CardTitle, ErrorState } from "../components/ui";
+import { useDemoSeed } from "../hooks/useDemoSeed";
 
 const features = [
   {
@@ -22,6 +23,9 @@ const features = [
 ];
 
 export function LandingPage() {
+  const navigate = useNavigate();
+  const demoSeed = useDemoSeed();
+
   return (
     <div className="space-y-12">
       <section className="grid min-h-[520px] gap-8 py-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
@@ -42,10 +46,24 @@ export function LandingPage() {
                 <ArrowRight size={16} />
               </Button>
             </Link>
+            <Button
+              variant="secondary"
+              disabled={demoSeed.isPending}
+              onClick={() =>
+                demoSeed.mutate(undefined, {
+                  onSuccess: () => navigate("/dashboard")
+                })
+              }
+            >
+              {demoSeed.isPending ? "Seeding demo" : "Try demo portfolio"}
+            </Button>
             <Link to="/dashboard">
               <Button variant="secondary">View dashboard shell</Button>
             </Link>
           </div>
+          {demoSeed.isError ? (
+            <ErrorState title="Could not start demo" detail={demoSeed.error.message} />
+          ) : null}
         </div>
 
         <div className="rounded-md border border-line bg-white p-4 shadow-soft">

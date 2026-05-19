@@ -112,3 +112,24 @@ def test_billing_placeholder_endpoints(client: TestClient) -> None:
 
     assert webhook_response.status_code == 200
     assert webhook_response.json()["received"] is True
+
+
+def test_demo_seed_endpoint_creates_portfolio_holdings_and_prices(client: TestClient) -> None:
+    response = client.post("/api/demo/seed")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["portfolio_name"] == "Demo Growth Portfolio"
+    assert body["holdings_count"] == 5
+    assert body["symbols"] == ["AAPL", "MSFT", "NVDA", "SPY", "TSLA"]
+
+    portfolios_response = client.get("/api/portfolios")
+    assert portfolios_response.status_code == 200
+    portfolio = portfolios_response.json()[0]
+    assert portfolio["name"] == "Demo Growth Portfolio"
+
+    holdings_response = client.get(f"/api/portfolios/{portfolio['id']}/holdings")
+    assert holdings_response.status_code == 200
+    holdings = holdings_response.json()
+    assert {holding["symbol"] for holding in holdings} == {"AAPL", "MSFT", "NVDA", "SPY", "TSLA"}
+    assert all(holding["current_price"] is not None for holding in holdings)

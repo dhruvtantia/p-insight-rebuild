@@ -9,6 +9,7 @@ from app.modules.ai_advisor.router import portfolio_router as ai_portfolio_route
 from app.modules.analytics.router import router as analytics_router
 from app.modules.billing.router import router as billing_router
 from app.modules.broker_connections.router import router as broker_connections_router
+from app.modules.demo.router import router as demo_router
 from app.modules.holdings.router import router as holdings_router
 from app.modules.health.router import router as health_router
 from app.modules.market_data.router import router as market_data_router
@@ -41,6 +42,7 @@ def create_app() -> FastAPI:
     app.include_router(watchlist_router)
     app.include_router(broker_connections_router)
     app.include_router(billing_router)
+    app.include_router(demo_router)
     app.include_router(uploads_router)
     return app
 

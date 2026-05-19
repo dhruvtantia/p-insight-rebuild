@@ -42,13 +42,21 @@ backend/    FastAPI modular monolith foundation
 docs/       Product, architecture, API, environment, and deployment notes
 ```
 
-## Local Development Plan
+## Local Development
 
-Phase 0 creates docs, folder skeletons, and env examples only. It does not implement backend routes, frontend screens, business logic, market data, AI, broker integrations, or payments.
+See [docs/local-development.md](docs/local-development.md) for backend setup, frontend setup, database setup, run commands, demo seeding, and test commands.
 
-Next phases should add implementation in small, testable commits:
-1. Backend app bootstrap and health route.
-2. Portfolio and holdings persistence through repository/service layers.
-3. Upload validation before holdings writes.
-4. Frontend MVP screens that call only backend APIs.
-5. Analytics, rule-based insights, and AI advisor mocks.
+Quick local path:
+
+```bash
+make backend
+make frontend
+```
+
+Seed demo data:
+
+```bash
+make seed-demo
+```
+
+Known MVP limitations are tracked in [docs/known-issues.md](docs/known-issues.md).

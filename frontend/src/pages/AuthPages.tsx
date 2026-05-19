@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { LogIn, UserPlus } from "lucide-react";
 import { useForm } from "react-hook-form";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
 
 import { Button, Card, CardTitle, Input } from "../components/ui";
@@ -22,6 +22,7 @@ export function SignupPage() {
 }
 
 function AuthForm({ mode }: { mode: "login" | "signup" }) {
+  const navigate = useNavigate();
   const form = useForm<AuthValues>({
     resolver: zodResolver(authSchema),
     defaultValues: { email: "", password: "" }
@@ -35,7 +36,7 @@ function AuthForm({ mode }: { mode: "login" | "signup" }) {
         <p className="mt-2 text-sm text-slate-600">
           Production auth is deferred. This form preserves the future Supabase Auth or Clerk entry point.
         </p>
-        <form className="mt-6 space-y-4" onSubmit={form.handleSubmit(() => undefined)}>
+        <form className="mt-6 space-y-4" onSubmit={form.handleSubmit(() => navigate("/onboarding"))}>
           <label className="block space-y-2">
             <span className="text-sm font-medium">Email</span>
             <Input type="email" placeholder="you@example.com" {...form.register("email")} />

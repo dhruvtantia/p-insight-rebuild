@@ -31,6 +31,12 @@ export async function apiRequest<T>(path: string, options: JsonRequestOptions = 
     ...options,
     headers,
     body: requestBody
+  }).catch((error) => {
+    throw new ApiError(
+      "Backend API unavailable. Make sure the FastAPI server is running and VITE_API_BASE_URL is correct.",
+      0,
+      error
+    );
   });
 
   if (response.status === 204) {

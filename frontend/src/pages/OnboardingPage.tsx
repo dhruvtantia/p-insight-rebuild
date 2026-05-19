@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 
 import { Button, Card, CardTitle, ErrorState, Input } from "../components/ui";
+import { useDemoSeed } from "../hooks/useDemoSeed";
 import { usePortfolios } from "../hooks/usePortfolios";
 
 const steps = [
@@ -24,6 +25,7 @@ type PortfolioFormValues = z.infer<typeof portfolioSchema>;
 export function OnboardingPage() {
   const navigate = useNavigate();
   const portfolios = usePortfolios();
+  const demoSeed = useDemoSeed();
   const form = useForm<PortfolioFormValues>({
     resolver: zodResolver(portfolioSchema),
     defaultValues: {
@@ -110,12 +112,27 @@ export function OnboardingPage() {
               {portfolios.createPortfolio.isPending ? "Creating" : "Create portfolio"}
               <ArrowRight size={16} />
             </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={demoSeed.isPending}
+              onClick={() =>
+                demoSeed.mutate(undefined, {
+                  onSuccess: () => navigate("/dashboard")
+                })
+              }
+            >
+              {demoSeed.isPending ? "Seeding demo" : "Try demo portfolio"}
+            </Button>
             {portfolios.data?.length ? (
               <Button type="button" variant="secondary" onClick={() => navigate("/dashboard")}>
                 Continue to dashboard
               </Button>
             ) : null}
           </div>
+          {demoSeed.isError ? (
+            <ErrorState title="Could not seed demo portfolio" detail={demoSeed.error.message} />
+          ) : null}
         </form>
       </Card>
     </div>

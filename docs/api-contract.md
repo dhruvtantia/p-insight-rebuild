@@ -769,3 +769,28 @@ Webhook response:
 Feature usage placeholder:
 - Backend usage snapshot currently reports portfolio count, holdings count, and AI conversation count.
 - Enforcement is explicitly disabled for MVP.
+
+## Demo Seed
+
+- `POST /api/demo/seed`
+
+Purpose: create or refresh deterministic local demo data for the development demo user.
+
+Response:
+
+```json
+{
+  "portfolio_id": "portfolio-id",
+  "portfolio_name": "Demo Growth Portfolio",
+  "holdings_count": 5,
+  "symbols": ["AAPL", "MSFT", "NVDA", "SPY", "TSLA"],
+  "message": "Demo portfolio seeded with mock prices."
+}
+```
+
+Behavior:
+- Creates the development demo user if needed through the existing auth placeholder.
+- Creates or updates `Demo Growth Portfolio`.
+- Creates or updates demo holdings for `AAPL`, `MSFT`, `NVDA`, `SPY`, and `TSLA`.
+- Inserts mock `asset_prices` rows using the deterministic mock market data provider.
+- The endpoint is intended for local MVP testing only.
