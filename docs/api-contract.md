@@ -624,24 +624,148 @@ Persistence:
 
 ## Watchlist
 
-- `GET /api/v1/watchlist`
-- `POST /api/v1/watchlist`
-- `DELETE /api/v1/watchlist/{symbol}`
+- `GET /api/watchlist`
+- `POST /api/watchlist`
+- `DELETE /api/watchlist/{watchlist_item_id}`
 
 Purpose: symbols the user wants to monitor outside current holdings.
 
+Create request:
+
+```json
+{
+  "symbol": "AAPL",
+  "name": "Apple Inc.",
+  "notes": "Track earnings"
+}
+```
+
+Response:
+
+```json
+{
+  "id": "watchlist-item-id",
+  "user_id": "demo-user-id",
+  "symbol": "AAPL",
+  "name": "Apple Inc.",
+  "notes": "Track earnings",
+  "current_price": 210.12,
+  "price_currency": "USD",
+  "price_source": "mock",
+  "price_as_of": "2026-01-01T00:00:00Z",
+  "created_at": "2026-05-19T00:00:00Z",
+  "updated_at": "2026-05-19T00:00:00Z"
+}
+```
+
+Behavior:
+- Symbols are normalized to uppercase.
+- Duplicate symbols for the same user are rejected.
+- `name` and `notes` are optional.
+- Latest price fields are populated from backend `asset_prices` when available. The frontend can refresh mock prices through backend market data endpoints.
+
 ## Broker Placeholder
 
-- `GET /api/v1/brokers/providers`
-- `POST /api/v1/brokers/{provider}/connect`
-- `POST /api/v1/brokers/{provider}/sync`
+- `GET /api/broker-connections`
+- `GET /api/broker-connections/providers`
+- `POST /api/broker-connections/connect-placeholder`
+- `DELETE /api/broker-connections/{connection_id}`
 
 Purpose: future broker connection flow. No real broker integration in MVP.
 
+Provider response:
+
+```json
+[
+  {
+    "provider": "plaid",
+    "display_name": "Plaid",
+    "status": "coming_soon",
+    "message": "Bank and brokerage aggregation is planned after manual upload workflows stabilize."
+  }
+]
+```
+
+Connect placeholder request:
+
+```json
+{
+  "provider": "Plaid"
+}
+```
+
+Connection response:
+
+```json
+{
+  "id": "connection-id",
+  "provider": "Plaid",
+  "status": "waitlist_interest",
+  "message": "Broker sync is coming soon. Manual uploads remain the supported MVP import path.",
+  "metadata": {
+    "is_placeholder": true
+  },
+  "created_at": "2026-05-19T00:00:00Z",
+  "updated_at": "2026-05-19T00:00:00Z"
+}
+```
+
+No real broker auth, token exchange, or sync is implemented.
+
 ## Billing Placeholder
 
-- `GET /api/v1/billing/plans`
-- `GET /api/v1/billing/usage`
-- `POST /api/v1/billing/checkout`
+- `GET /api/billing/plan`
+- `POST /api/billing/create-checkout-session`
+- `POST /api/billing/webhook`
 
 Purpose: future freemium and Stripe-backed billing flow. No live billing in MVP.
+
+Plan response:
+
+```json
+{
+  "current_plan": "free",
+  "status": "placeholder",
+  "plans": [
+    {
+      "id": "free",
+      "name": "Free",
+      "price_label": "$0",
+      "features": ["1 portfolio", "manual upload", "basic analytics"],
+      "is_current": true,
+      "is_available": true
+    }
+  ],
+  "usage": {
+    "portfolio_count": 1,
+    "holdings_count": 10,
+    "ai_conversation_count": 2,
+    "enforcement_enabled": false
+  },
+  "message": "Billing is a placeholder. No Stripe checkout is active yet."
+}
+```
+
+Checkout response:
+
+```json
+{
+  "status": "coming_soon",
+  "checkout_url": null,
+  "message": "Checkout is coming soon. No payment session was created."
+}
+```
+
+Webhook response:
+
+```json
+{
+  "received": true,
+  "status": "placeholder",
+  "message": "Billing webhook placeholder received the request. No Stripe processing was performed."
+}
+```
+
+Feature usage placeholder:
+- Backend usage snapshot currently reports portfolio count, holdings count, and AI conversation count.
+- Enforcement is explicitly disabled for MVP.
