@@ -1,6 +1,6 @@
 import pytest
 
-from app.modules.market_data.symbols import normalize_benchmark_symbol, normalize_market_symbol
+from app.modules.market_data.symbols import is_isin_like, normalize_benchmark_symbol, normalize_market_symbol
 
 
 @pytest.mark.parametrize(
@@ -38,3 +38,10 @@ def test_normalize_benchmark_symbol_accepts_nifty_style_names() -> None:
     assert normalize_benchmark_symbol("NIFTY 50") == "NIFTY50"
     assert normalize_benchmark_symbol("NIFTY50") == "NIFTY50"
     assert normalize_benchmark_symbol("BANK NIFTY") == "BANKNIFTY"
+
+
+def test_isin_like_detection() -> None:
+    assert is_isin_like("INE002A01018") is True
+    assert is_isin_like(" ine002a01018 ") is True
+    assert is_isin_like("RELIANCE") is False
+    assert is_isin_like("500325") is False

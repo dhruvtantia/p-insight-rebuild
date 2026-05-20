@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass
 
 
@@ -32,6 +33,7 @@ INDIA_PROVIDER_TO_NORMALIZED_SYMBOL = {
 BSE_CODE_PROVIDER_SYMBOLS = {
     "500325": "BSE:500325",
 }
+ISIN_PATTERN = re.compile(r"^[A-Z]{2}[A-Z0-9]{9}[0-9]$")
 
 
 @dataclass(frozen=True)
@@ -84,6 +86,13 @@ def normalize_benchmark_symbol(symbol: str | None) -> str | None:
     if not cleaned:
         return None
     return normalize_market_symbol(cleaned).normalized_symbol
+
+
+def is_isin_like(value: str | None) -> bool:
+    if value is None:
+        return False
+    cleaned = value.strip().upper().replace(" ", "")
+    return bool(ISIN_PATTERN.fullmatch(cleaned))
 
 
 def _normalized_india_symbol(symbol: str) -> str:

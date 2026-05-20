@@ -4,10 +4,12 @@ from fastapi import APIRouter, Depends, File, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.core.auth import CurrentUser
+from app.core.feature_flags import require_feature_enabled
 from app.db.session import get_db
 from app.modules.uploads.schemas import (
     ColumnMappingRequest,
     ColumnMappingResponse,
+    ColumnMappingSuggestionsResponse,
     ConfirmUploadResponse,
     UploadErrorsResponse,
     UploadJobResponse,
@@ -23,6 +25,10 @@ def get_upload_service(db: Annotated[Session, Depends(get_db)]) -> UploadService
 
 
 UploadServiceDep = Annotated[UploadService, Depends(get_upload_service)]
+
+
+def require_upload_suggestions_enabled() -> None:
+    require_feature_enabled("ENABLE_UPLOAD_SUGGESTIONS")
 
 
 @router.post(
@@ -56,6 +62,16 @@ def apply_column_mapping(
         user=user,
         mapping=request.mapping,
     )
+
+
+@router.get("/api/uploads/{upload_job_id}/mapping-suggestions", response_model=ColumnMappingSuggestionsResponse)
+def get_mapping_suggestions(
+    upload_job_id: str,
+    _: Annotated[None, Depends(require_upload_suggestions_enabled)],
+    user: CurrentUser,
+    service: UploadServiceDep,
+):
+    return service.get_mapping_suggestions(upload_job_id=upload_job_id, user=user)
 
 
 @router.post("/api/uploads/{upload_job_id}/validate", response_model=ValidateUploadResponse)

@@ -3,6 +3,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.modules.uploads.column_detection import ColumnMappingSuggestion
+
 SUPPORTED_UPLOAD_FIELDS = {
     "symbol",
     "company_name",
@@ -24,6 +26,7 @@ class UploadRowResponse(BaseModel):
     raw_data: dict
     mapped_data: dict
     validation_errors: list[str]
+    warnings: list[str] = Field(default_factory=list)
     status: str
 
 
@@ -53,18 +56,33 @@ class ColumnMappingResponse(BaseModel):
     mapped_preview_rows: list[dict]
 
 
+class ColumnMappingSuggestionsResponse(BaseModel):
+    upload_job_id: str
+    detected_columns: list[str]
+    suggestions: list[ColumnMappingSuggestion]
+
+
 class ValidateUploadResponse(BaseModel):
     upload_job: UploadJobResponse
     rows: list[UploadRowResponse]
+
+
+class RejectedUploadRowReason(BaseModel):
+    row_number: int
+    symbol: str | None = None
+    reasons: list[str]
 
 
 class ConfirmUploadResponse(BaseModel):
     upload_job_id: str
     status: Literal["imported", "partial_imported"]
     imported_count: int
+    invalid_count: int
+    duplicate_count: int
     skipped_count: int
     invalid_rows: int
     warnings: list[str]
+    rejected_row_reasons: list[RejectedUploadRowReason] = Field(default_factory=list)
     created_holding_ids: list[str]
 
 

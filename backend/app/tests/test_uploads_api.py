@@ -257,6 +257,31 @@ def test_indian_csv_upload_normalizes_symbols_and_keeps_inr(client: TestClient) 
     assert {holding["exchange"] for holding in holdings} == {"NSE", "BSE"}
 
 
+def test_isin_like_symbol_returns_validation_warning(client: TestClient) -> None:
+    response = client.post(
+        "/api/portfolios",
+        json={"name": "India Upload Portfolio", "base_currency": "INR", "benchmark_symbol": "NIFTY 50"},
+    )
+    assert response.status_code == 201
+    portfolio = response.json()
+
+    upload = upload_csv(
+        client,
+        portfolio["id"],
+        "Ticker,Name,Shares,Average Cost,Market Value,Currency,Sector,Asset Class,Exchange\n"
+        "INE002A01018,Reliance Industries Ltd,10,2850,28500,INR,Energy,Equity,NSE\n",
+    )
+    apply_mapping(client, upload["id"])
+    validation = validate_upload(client, upload["id"])
+
+    assert validation["upload_job"]["valid_rows"] == 1
+    assert validation["upload_job"]["invalid_rows"] == 0
+    assert validation["rows"][0]["validation_errors"] == []
+    assert validation["rows"][0]["warnings"] == [
+        "Symbol appears to be an ISIN. Please map to NSE/BSE trading symbol."
+    ]
+
+
 def test_invalid_rows_do_not_create_holdings(client: TestClient) -> None:
     portfolio = create_portfolio(client)
     upload = upload_csv(
@@ -274,7 +299,16 @@ def test_invalid_rows_do_not_create_holdings(client: TestClient) -> None:
 
     assert confirm["status"] == "partial_imported"
     assert confirm["imported_count"] == 1
+    assert confirm["invalid_count"] == 1
+    assert confirm["duplicate_count"] == 0
     assert confirm["invalid_rows"] == 1
+    assert confirm["rejected_row_reasons"] == [
+        {
+            "row_number": 2,
+            "symbol": "BAD",
+            "reasons": ["quantity must be a positive number"],
+        }
+    ]
     assert len(holdings) == 1
     assert holdings[0]["symbol"] == "AAPL"
     assert len(errors["errors"]) == 1
@@ -303,9 +337,58 @@ def test_duplicate_symbols_are_skipped(client: TestClient) -> None:
 
     assert confirm["status"] == "partial_imported"
     assert confirm["imported_count"] == 1
+    assert confirm["invalid_count"] == 0
+    assert confirm["duplicate_count"] == 2
     assert confirm["skipped_count"] == 2
     assert any("AAPL skipped" in warning for warning in confirm["warnings"])
+    assert [
+        (reason["row_number"], reason["symbol"], reason["reasons"][0])
+        for reason in confirm["rejected_row_reasons"]
+    ] == [
+        (1, "AAPL", "AAPL skipped because it already exists in the portfolio or upload batch"),
+        (3, "MSFT", "MSFT skipped because it already exists in the portfolio or upload batch"),
+    ]
     assert sorted(holding["symbol"] for holding in holdings) == ["AAPL", "MSFT"]
+
+
+def test_partial_import_summary_includes_invalid_and_duplicate_reasons(client: TestClient) -> None:
+    portfolio = create_portfolio(client)
+    existing = client.post(
+        f"/api/portfolios/{portfolio['id']}/holdings",
+        json={"symbol": "AAPL", "quantity": 1, "average_cost": 90, "current_price": 100},
+    )
+    assert existing.status_code == 201
+
+    upload = upload_csv(
+        client,
+        portfolio["id"],
+        "Ticker,Name,Shares,Average Cost,Market Value,Currency,Sector,Asset Class,Exchange\n"
+        "AAPL,Apple Inc.,10,100,1250,USD,Technology,Equity,NASDAQ\n"
+        "MSFT,Microsoft,5,200,1500,USD,Technology,Equity,NASDAQ\n"
+        "BAD,Bad Row,-2,200,900,USD,Technology,Equity,NASDAQ\n",
+    )
+    apply_mapping(client, upload["id"])
+    validate_upload(client, upload["id"])
+    confirm = confirm_upload(client, upload["id"])
+
+    assert confirm["status"] == "partial_imported"
+    assert confirm["imported_count"] == 1
+    assert confirm["invalid_count"] == 1
+    assert confirm["duplicate_count"] == 1
+    assert confirm["skipped_count"] == 1
+    assert confirm["invalid_rows"] == 1
+    assert confirm["rejected_row_reasons"] == [
+        {
+            "row_number": 1,
+            "symbol": "AAPL",
+            "reasons": ["AAPL skipped because it already exists in the portfolio or upload batch"],
+        },
+        {
+            "row_number": 3,
+            "symbol": "BAD",
+            "reasons": ["quantity must be a positive number"],
+        },
+    ]
 
 
 def test_upload_json_helpers_return_safe_defaults_for_invalid_json() -> None:

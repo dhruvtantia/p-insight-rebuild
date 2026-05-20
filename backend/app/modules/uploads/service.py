@@ -11,8 +11,9 @@ from sqlalchemy.orm import Session
 from app.db.models import Portfolio, UploadJob
 from app.db.models import User
 from app.modules.portfolios.service import PortfolioService
-from app.modules.market_data.symbols import normalize_market_symbol
+from app.modules.market_data.symbols import is_isin_like, normalize_market_symbol
 from app.modules.uploads.errors import UploadJobNotFoundError, UploadValidationError
+from app.modules.uploads.column_detection import suggest_column_mappings_from_rows
 from app.modules.uploads.repository import (
     UploadRepository,
     job_mapping,
@@ -22,8 +23,10 @@ from app.modules.uploads.repository import (
 )
 from app.modules.uploads.schemas import (
     ColumnMappingResponse,
+    ColumnMappingSuggestionsResponse,
     ConfirmUploadResponse,
     REQUIRED_UPLOAD_FIELDS,
+    RejectedUploadRowReason,
     SUPPORTED_UPLOAD_FIELDS,
     UploadErrorsResponse,
     UploadJobResponse,
@@ -83,6 +86,20 @@ class UploadService:
             mapped_preview_rows=[row_mapped_data(row) for row in upload_job.rows[:5]],
         )
 
+    def get_mapping_suggestions(
+        self,
+        *,
+        upload_job_id: str,
+        user: User,
+    ) -> ColumnMappingSuggestionsResponse:
+        upload_job, _portfolio = self.get_job_for_user(upload_job_id=upload_job_id, user=user)
+        raw_rows = [row_raw_data(row) for row in upload_job.rows]
+        return ColumnMappingSuggestionsResponse(
+            upload_job_id=upload_job.id,
+            detected_columns=detected_columns_for_job(upload_job),
+            suggestions=suggest_column_mappings_from_rows(raw_rows),
+        )
+
     def validate_upload(self, *, upload_job_id: str, user: User) -> ValidateUploadResponse:
         upload_job, portfolio = self.get_job_for_user(upload_job_id=upload_job_id, user=user)
         mapping = job_mapping(upload_job)
@@ -110,17 +127,37 @@ class UploadService:
         symbols_seen = set(existing_symbols)
         rows_to_import: list[dict] = []
         warnings: list[str] = []
+        rejected_row_reasons: list[RejectedUploadRowReason] = []
         skipped_count = 0
+        duplicate_count = 0
 
         for row in upload_job.rows:
             if row.status != "valid":
+                rejected_row_reasons.append(
+                    RejectedUploadRowReason(
+                        row_number=row.row_number,
+                        symbol=clean_string(row_mapped_data(row).get("symbol")),
+                        reasons=row_errors(row),
+                    )
+                )
                 continue
             mapped = row_mapped_data(row)
             symbol = mapped["symbol"]
             if symbol in symbols_seen:
                 skipped_count += 1
+                duplicate_count += 1
+                duplicate_reason = (
+                    f"{symbol} skipped because it already exists in the portfolio or upload batch"
+                )
                 warnings.append(
-                    f"Row {row.row_number}: {symbol} skipped because it already exists in the portfolio or upload batch"
+                    f"Row {row.row_number}: {duplicate_reason}"
+                )
+                rejected_row_reasons.append(
+                    RejectedUploadRowReason(
+                        row_number=row.row_number,
+                        symbol=symbol,
+                        reasons=[duplicate_reason],
+                    )
                 )
                 continue
             symbols_seen.add(symbol)
@@ -141,9 +178,12 @@ class UploadService:
             upload_job_id=upload_job.id,
             status=status,
             imported_count=len(holdings),
+            invalid_count=upload_job.invalid_rows,
+            duplicate_count=duplicate_count,
             skipped_count=skipped_count,
             invalid_rows=upload_job.invalid_rows,
             warnings=warnings,
+            rejected_row_reasons=rejected_row_reasons,
             created_holding_ids=[holding.id for holding in holdings],
         )
 
@@ -180,12 +220,14 @@ class UploadService:
 
     @staticmethod
     def to_row_response(row) -> UploadRowResponse:
+        mapped_data = row_mapped_data(row)
         return UploadRowResponse(
             id=row.id,
             row_number=row.row_number,
             raw_data=row_raw_data(row),
-            mapped_data=row_mapped_data(row),
+            mapped_data=public_mapped_data(mapped_data),
             validation_errors=row_errors(row),
+            warnings=row_warnings(mapped_data),
             status=row.status,
         )
 
@@ -262,8 +304,13 @@ def map_row(raw_row: dict, mapping: dict[str, str]) -> dict:
     return {target_field: raw_row.get(source_column) for target_field, source_column in mapping.items()}
 
 
+ISIN_WARNING = "Symbol appears to be an ISIN. Please map to NSE/BSE trading symbol."
+INTERNAL_WARNINGS_KEY = "_warnings"
+
+
 def validate_mapped_row(*, mapped: dict, portfolio: Portfolio) -> tuple[dict, list[str]]:
     errors: list[str] = []
+    warnings: list[str] = []
     normalized: dict = {}
     symbol_metadata = None
 
@@ -271,7 +318,12 @@ def validate_mapped_row(*, mapped: dict, portfolio: Portfolio) -> tuple[dict, li
     if not symbol:
         errors.append("symbol is required")
     else:
-        symbol_metadata = normalize_market_symbol(symbol, default_exchange=clean_string(mapped.get("exchange")) or "NSE")
+        if is_isin_like(symbol):
+            warnings.append(ISIN_WARNING)
+        symbol_metadata = normalize_market_symbol(
+            symbol,
+            default_exchange=clean_string(mapped.get("exchange")) or "NSE",
+        )
         normalized["symbol"] = symbol_metadata.normalized_symbol
 
     quantity = parse_optional_number(mapped.get("quantity"))
@@ -306,8 +358,20 @@ def validate_mapped_row(*, mapped: dict, portfolio: Portfolio) -> tuple[dict, li
     normalized["exchange"] = clean_string(mapped.get("exchange")) or (
         symbol_metadata.exchange if symbol_metadata else None
     )
+    normalized[INTERNAL_WARNINGS_KEY] = warnings
 
     return normalized, errors
+
+
+def row_warnings(mapped_data: dict) -> list[str]:
+    raw_warnings = mapped_data.get(INTERNAL_WARNINGS_KEY, [])
+    if not isinstance(raw_warnings, list):
+        return []
+    return [str(warning) for warning in raw_warnings]
+
+
+def public_mapped_data(mapped_data: dict) -> dict:
+    return {key: value for key, value in mapped_data.items() if key != INTERNAL_WARNINGS_KEY}
 
 
 def parse_optional_number(value) -> float | None:
