@@ -13,13 +13,14 @@ import {
   YAxis
 } from "recharts";
 
-import { Button, Card, CardTitle, EmptyState, ErrorState, LoadingState, Table, Td, Th } from "../components/ui";
+import { Badge, Button, Card, CardTitle, EmptyState, ErrorState, LoadingState, Table, Td, Th } from "../components/ui";
 import { useAnalytics } from "../hooks/useAnalytics";
 import { useHoldings } from "../hooks/useHoldings";
 import { usePortfolioPrices } from "../hooks/usePortfolioPrices";
 import { usePortfolios } from "../hooks/usePortfolios";
 import type { AllocationBucket, HoldingAnalytics, PortfolioAnalyticsSummary, RuleInsight } from "../types/analytics";
 import type { Holding } from "../types/holdings";
+import type { PortfolioPriceRefreshResponse } from "../services/marketDataApi";
 import type { Portfolio } from "../types/portfolio";
 
 const CHART_COLORS = ["#0f766e", "#d59a1a", "#e05d4f", "#2563eb", "#7c3aed", "#64748b"];
@@ -86,7 +87,7 @@ export function DashboardPage() {
       <SummaryCards summary={summary} latestPriceUpdatedAt={latestPriceUpdatedAt} />
       <PriceActionPanel
         isRefreshing={portfolioPrices.refreshPrices.isPending}
-        refreshedCount={portfolioPrices.refreshPrices.data?.refreshed_count}
+        refreshResult={portfolioPrices.refreshPrices.data}
         errorMessage={portfolioPrices.refreshPrices.error?.message}
         onRefresh={() => portfolioPrices.refreshPrices.mutate()}
       />
@@ -179,15 +180,17 @@ function SummaryCards({
 
 function PriceActionPanel({
   isRefreshing,
-  refreshedCount,
+  refreshResult,
   errorMessage,
   onRefresh
 }: {
   isRefreshing: boolean;
-  refreshedCount?: number;
+  refreshResult?: PortfolioPriceRefreshResponse;
   errorMessage?: string;
   onRefresh: () => void;
 }) {
+  const sources = uniqueSources(refreshResult);
+
   return (
     <Card>
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -200,10 +203,17 @@ function PriceActionPanel({
           {isRefreshing ? "Refreshing" : "Refresh Prices"}
         </Button>
       </div>
-      {typeof refreshedCount === "number" ? (
-        <p className="mt-3 text-sm text-slate-600">
-          Refreshed {refreshedCount} holding{refreshedCount === 1 ? "" : "s"}.
-        </p>
+      {refreshResult ? (
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-600">
+          <span>
+            Refreshed {refreshResult.refreshed_count} holding{refreshResult.refreshed_count === 1 ? "" : "s"}.
+          </span>
+          {sources.map((source) => (
+            <Badge key={source} tone={source.toLowerCase().includes("mock") ? "warning" : "neutral"}>
+              {source}
+            </Badge>
+          ))}
+        </div>
       ) : null}
       {errorMessage ? (
         <div className="mt-4">
@@ -212,6 +222,12 @@ function PriceActionPanel({
       ) : null}
     </Card>
   );
+}
+
+function uniqueSources(refreshResult?: PortfolioPriceRefreshResponse) {
+  return Array.from(
+    new Set((refreshResult?.holdings ?? refreshResult?.prices ?? []).map((item) => item.source).filter(Boolean))
+  ).sort();
 }
 
 function AIAdvisorCard({ isEmptyPortfolio, topRule }: { isEmptyPortfolio: boolean; topRule?: RuleInsight }) {

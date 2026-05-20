@@ -102,7 +102,7 @@ class MarketDataService:
     def _build_provider(self) -> MarketDataProvider:
         settings = get_settings()
         provider_name = settings.market_data_provider.strip().lower()
-        if provider_name == "mock":
+        if provider_name in {"mock", "mock_india"}:
             return MockProvider()
         if provider_name in {"polygon", "massive"}:
             return PolygonProvider(api_key=settings.polygon_api_key or settings.market_data_api_key)

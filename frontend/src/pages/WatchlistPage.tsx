@@ -2,7 +2,7 @@ import { Plus, RefreshCw, Trash2 } from "lucide-react";
 import { FormEvent, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
-import { Button, Card, CardTitle, EmptyState, ErrorState, Input, LoadingState, Table, Td, Th } from "../components/ui";
+import { Badge, Button, Card, CardTitle, EmptyState, ErrorState, Input, LoadingState, Table, Td, Th } from "../components/ui";
 import { useWatchlist } from "../hooks/useWatchlist";
 import { getBatchPrices } from "../services/marketDataApi";
 import type { WatchlistItem } from "../types/watchlist";
@@ -151,12 +151,19 @@ function WatchlistTable({
               const quote = priceBySymbol.get(item.symbol);
               const price = quote?.price ?? item.current_price;
               const currency = quote?.currency ?? item.price_currency ?? "USD";
+              const source = quote?.source ?? item.price_source;
               return (
                 <tr key={item.id}>
                   <Td className="font-semibold text-ink">{item.symbol}</Td>
                   <Td>{item.name ?? "N/A"}</Td>
                   <Td>{formatCurrency(price ?? null, currency)}</Td>
-                  <Td>{quote?.source ?? item.price_source ?? "N/A"}</Td>
+                  <Td>
+                    {source ? (
+                      <Badge tone={source.toLowerCase().includes("mock") ? "warning" : "neutral"}>{source}</Badge>
+                    ) : (
+                      "N/A"
+                    )}
+                  </Td>
                   <Td>{item.notes ?? "N/A"}</Td>
                   <Td>
                     <Button

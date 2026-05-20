@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { Badge, Button, Card, CardTitle, EmptyState, ErrorState, LoadingState } from "../components/ui";
 import { useAIAdvisor } from "../hooks/useAIAdvisor";
 import { useAnalytics } from "../hooks/useAnalytics";
+import { useAppStatus } from "../hooks/useAppStatus";
 import { usePortfolios } from "../hooks/usePortfolios";
 import type { AIAdvisorResponse, AIMessageResponse } from "../types/ai";
 import type { Portfolio } from "../types/portfolio";
@@ -21,6 +22,7 @@ const SUGGESTED_QUESTIONS = [
 type ChatMessage = {
   role: "user" | "assistant";
   content: string;
+  provider?: string | null;
   created_at?: string;
 };
 
@@ -40,6 +42,7 @@ export function AIAdvisorPage() {
 
   const analytics = useAnalytics(selectedPortfolio?.id);
   const advisor = useAIAdvisor(selectedPortfolio?.id);
+  const appStatus = useAppStatus();
   const [question, setQuestion] = useState("");
   const [sessionMessages, setSessionMessages] = useState<ChatMessage[]>([]);
 
@@ -140,6 +143,7 @@ export function AIAdvisorPage() {
           {analytics.isError ? <ErrorState title="Missing analytics" detail={analytics.error?.message} /> : null}
           <ChatPanel
             messages={visibleMessages}
+            aiProviderMode={appStatus.data?.ai_provider_mode}
             isLoading={advisor.generateSummary.isPending || advisor.askQuestion.isPending}
             question={question}
             onQuestionChange={setQuestion}
@@ -258,6 +262,7 @@ function ContextPanel({
 
 function ChatPanel({
   messages,
+  aiProviderMode,
   isLoading,
   question,
   onQuestionChange,
@@ -266,6 +271,7 @@ function ChatPanel({
   disableActions
 }: {
   messages: ChatMessage[];
+  aiProviderMode?: string;
   isLoading: boolean;
   question: string;
   onQuestionChange: (value: string) => void;
@@ -299,7 +305,11 @@ function ChatPanel({
           </div>
         ) : null}
         {messages.map((message, index) => (
-          <ChatBubble key={`${message.role}-${index}-${message.created_at ?? ""}`} message={message} />
+          <ChatBubble
+            key={`${message.role}-${index}-${message.created_at ?? ""}`}
+            message={message}
+            aiProviderMode={aiProviderMode}
+          />
         ))}
         {isLoading ? (
           <div className="self-start rounded-md bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
@@ -422,11 +432,18 @@ function EmptyHoldingsCta() {
   );
 }
 
-function ChatBubble({ message }: { message: ChatMessage }) {
+function ChatBubble({ message, aiProviderMode }: { message: ChatMessage; aiProviderMode?: string }) {
   const isUser = message.role === "user";
+  const isMockAiResponse =
+    !isUser && (message.provider?.trim().toLowerCase() === "mock" || aiProviderMode?.trim().toLowerCase() === "mock");
   return (
     <div className={isUser ? "self-end" : "self-start"}>
       <div className={["max-w-2xl rounded-md px-4 py-3 text-sm leading-6 shadow-sm", isUser ? "bg-accent text-white" : "bg-white text-slate-700"].join(" ")}>
+        {isMockAiResponse ? (
+          <div className="mb-2">
+            <Badge tone="warning">Mock AI response</Badge>
+          </div>
+        ) : null}
         {message.content}
       </div>
       {message.created_at ? (
@@ -449,6 +466,7 @@ function responseToAssistantMessage(response: AIAdvisorResponse): ChatMessage {
   return {
     role: "assistant",
     content: response.response,
+    provider: response.provider,
     created_at: response.created_at
   };
 }
@@ -457,6 +475,7 @@ function toChatMessage(message: AIMessageResponse): ChatMessage {
   return {
     role: message.role === "user" ? "user" : "assistant",
     content: message.content,
+    provider: message.provider,
     created_at: message.created_at
   };
 }

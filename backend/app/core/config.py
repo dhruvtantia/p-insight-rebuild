@@ -50,6 +50,11 @@ class Settings(BaseSettings):
     def demo_mode_enabled(self) -> bool:
         return self.app_env.strip().lower() == "local" or self.enable_demo_mode
 
+    @computed_field
+    @property
+    def ai_provider_mode(self) -> str:
+        return "mock"
+
 
 @lru_cache
 def get_settings() -> Settings:

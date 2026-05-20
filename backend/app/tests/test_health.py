@@ -13,3 +13,17 @@ def test_health_endpoint() -> None:
         "status": "ok",
         "service": "p-insight-backend",
     }
+
+
+def test_status_endpoint_exposes_demo_safety_config() -> None:
+    client = TestClient(create_app())
+
+    response = client.get("/api/status")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "app_env": "local",
+        "demo_mode_enabled": True,
+        "market_data_provider": "mock",
+        "ai_provider_mode": "mock",
+    }

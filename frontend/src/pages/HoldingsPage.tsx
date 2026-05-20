@@ -170,10 +170,17 @@ export function HoldingsPage() {
             <span>Last price update: {latestPriceUpdatedAt ? formatDateTime(latestPriceUpdatedAt) : "N/A"}</span>
           </div>
           {portfolioPrices.refreshPrices.data ? (
-            <span>
-              Refreshed {portfolioPrices.refreshPrices.data.refreshed_count} holding
-              {portfolioPrices.refreshPrices.data.refreshed_count === 1 ? "" : "s"}
-            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span>
+                Refreshed {portfolioPrices.refreshPrices.data.refreshed_count} holding
+                {portfolioPrices.refreshPrices.data.refreshed_count === 1 ? "" : "s"}
+              </span>
+              {uniqueSources(portfolioPrices.refreshPrices.data.holdings).map((source) => (
+                <Badge key={source} tone={source.toLowerCase().includes("mock") ? "warning" : "neutral"}>
+                  {source}
+                </Badge>
+              ))}
+            </div>
           ) : null}
         </div>
         {portfolioPrices.refreshPrices.isError ? (
@@ -222,6 +229,10 @@ export function HoldingsPage() {
       </div>
     </div>
   );
+}
+
+function uniqueSources(items: Array<{ source: string }>) {
+  return Array.from(new Set(items.map((item) => item.source).filter(Boolean))).sort();
 }
 
 function HoldingsHeader() {

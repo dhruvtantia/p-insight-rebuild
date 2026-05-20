@@ -1,6 +1,16 @@
 from fastapi import APIRouter
+from pydantic import BaseModel
+
+from app.core.config import get_settings
 
 router = APIRouter(prefix="/api", tags=["health"])
+
+
+class AppStatusResponse(BaseModel):
+    app_env: str
+    demo_mode_enabled: bool
+    market_data_provider: str
+    ai_provider_mode: str
 
 
 @router.get("/health")
@@ -9,3 +19,14 @@ def health_check() -> dict[str, str]:
         "status": "ok",
         "service": "p-insight-backend",
     }
+
+
+@router.get("/status", response_model=AppStatusResponse)
+def app_status() -> AppStatusResponse:
+    settings = get_settings()
+    return AppStatusResponse(
+        app_env=settings.app_env,
+        demo_mode_enabled=settings.demo_mode_enabled,
+        market_data_provider=settings.market_data_provider,
+        ai_provider_mode=settings.ai_provider_mode,
+    )

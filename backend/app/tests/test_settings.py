@@ -8,6 +8,7 @@ def test_settings_load_defaults() -> None:
     assert settings.app_env == "local"
     assert settings.demo_mode_enabled is True
     assert settings.market_data_provider == "mock"
+    assert settings.ai_provider_mode == "mock"
     assert "http://localhost:5173" in settings.cors_origin_list
 
 
