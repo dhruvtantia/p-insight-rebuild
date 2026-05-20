@@ -1,6 +1,7 @@
 from datetime import UTC, date, datetime, timedelta
 from hashlib import sha256
 
+from app.modules.common.data_status import DataStatus
 from app.modules.market_data.providers.base import MarketDataProvider
 from app.modules.market_data.schemas import CompanyProfile, FxRate, PriceHistoryPoint, PriceQuote
 from app.modules.market_data.symbols import normalize_india_symbol_for_provider, normalize_market_symbol
@@ -33,6 +34,7 @@ class MockProvider(MarketDataProvider):
             source=self.source,
             as_of=MOCK_AS_OF,
             is_realtime=False,
+            data_status=self._data_status(),
         )
 
     def get_batch_prices(self, symbols: list[str]) -> list[PriceQuote]:
@@ -58,6 +60,7 @@ class MockProvider(MarketDataProvider):
                     close=round(base_price * (1 + daily_offset), 2),
                     currency=self.currency,
                     source=self.source,
+                    data_status=self._data_status(),
                 )
             )
             current += timedelta(days=1)
@@ -74,6 +77,7 @@ class MockProvider(MarketDataProvider):
             asset_class="equity",
             exchange=self.default_exchange,
             source=self.source,
+            data_status=self._data_status(),
         )
 
     def get_fx_rate(self, from_currency: str, to_currency: str) -> FxRate:
@@ -87,6 +91,7 @@ class MockProvider(MarketDataProvider):
             source=self.source,
             as_of=MOCK_AS_OF,
             is_realtime=False,
+            data_status=self._data_status(),
         )
 
     def _price_for_symbol(self, symbol: str) -> float:
@@ -116,6 +121,9 @@ class MockProvider(MarketDataProvider):
         if not cleaned:
             raise ValueError("Symbol cannot be empty")
         return cleaned
+
+    def _data_status(self) -> DataStatus:
+        return DataStatus.mock_source(provider=self.source, as_of=MOCK_AS_OF, is_realtime=False)
 
 
 class MockProviderIndia(MockProvider):
@@ -173,6 +181,7 @@ class MockProviderIndia(MockProvider):
             asset_class=symbol_metadata.asset_class,
             exchange=symbol_metadata.exchange,
             source=self.source,
+            data_status=self._data_status(),
         )
 
     def _price_for_symbol(self, symbol: str) -> float:

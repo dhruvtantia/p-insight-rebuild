@@ -21,9 +21,11 @@ class Settings(BaseSettings):
     twelve_data_api_key: str | None = None
     alpha_vantage_api_key: str | None = None
     marketstack_api_key: str | None = None
+    allow_production_mock_market_data: bool = False
 
     openai_api_key: str | None = None
     anthropic_api_key: str | None = None
+    allow_production_mock_ai: bool = False
 
     supabase_url: str | None = None
     supabase_service_role_key: str | None = None
@@ -43,6 +45,11 @@ class Settings(BaseSettings):
 
     @computed_field
     @property
+    def normalized_app_env(self) -> str:
+        return self.app_env.strip().lower()
+
+    @computed_field
+    @property
     def cors_origin_list(self) -> list[str]:
         origins = [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
         if self.frontend_url:
@@ -52,12 +59,65 @@ class Settings(BaseSettings):
     @computed_field
     @property
     def demo_mode_enabled(self) -> bool:
-        return self.app_env.strip().lower() == "local" or self.enable_demo_mode
+        return self.normalized_app_env == "local" or self.enable_demo_mode
 
     @computed_field
     @property
     def ai_provider_mode(self) -> str:
         return "mock"
+
+    @computed_field
+    @property
+    def resolved_market_data_provider(self) -> str:
+        provider_name = self.market_data_provider.strip().lower()
+        if provider_name in {"india", "indian"}:
+            return self.indian_market_data_provider.strip().lower()
+        return provider_name
+
+    @computed_field
+    @property
+    def market_data_is_mock(self) -> bool:
+        return self.resolved_market_data_provider in {"mock", "mock_india"}
+
+    @computed_field
+    @property
+    def ai_is_mock(self) -> bool:
+        return self.ai_provider_mode.strip().lower() == "mock"
+
+    @computed_field
+    @property
+    def production_mock_market_data_allowed(self) -> bool:
+        return self.normalized_app_env in {"local", "test", "demo", "development"} or self.allow_production_mock_market_data
+
+    @computed_field
+    @property
+    def production_mock_ai_allowed(self) -> bool:
+        return self.normalized_app_env in {"local", "test", "demo", "development"} or self.allow_production_mock_ai
+
+    @computed_field
+    @property
+    def production_safe(self) -> bool:
+        return not (self.market_data_is_mock or self.ai_is_mock)
+
+    @computed_field
+    @property
+    def warnings(self) -> list[str]:
+        warnings: list[str] = []
+        if self.market_data_is_mock:
+            warnings.append(
+                f"Market data provider '{self.resolved_market_data_provider}' is mock data and is not production-safe."
+            )
+            if self.normalized_app_env == "production" and self.allow_production_mock_market_data:
+                warnings.append(
+                    "Production mock market data override is enabled; use this only for explicit test/demo deployments."
+                )
+        if self.ai_is_mock:
+            warnings.append("AI provider mode is mock and is not production-safe.")
+            if self.normalized_app_env == "production" and self.allow_production_mock_ai:
+                warnings.append(
+                    "Production mock AI override is enabled; use this only for explicit test/demo deployments."
+                )
+        return warnings
 
 
 @lru_cache

@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.core.errors import NotFoundError
+from app.core.errors import NotFoundError, ValidationAppError
 from app.core.json import safe_json_dict
 from app.db.models import AIConversation, AIMessage, User
 from app.modules.ai_advisor.context_builder import AIAdvisorContextBuilder
@@ -225,6 +225,10 @@ class AIAdvisorService:
 
     def _provider_metadata(self) -> tuple[str, str]:
         settings = get_settings()
+        if settings.normalized_app_env == "production" and settings.ai_is_mock and not settings.production_mock_ai_allowed:
+            raise ValidationAppError(
+                "Mock AI is disabled in production. Set ALLOW_PRODUCTION_MOCK_AI=true only for explicit test/demo deployments."
+            )
         if settings.openai_api_key:
             return "mock", "openai-ready-mock"
         if settings.anthropic_api_key:

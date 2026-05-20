@@ -2,6 +2,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.modules.common.data_status import DataStatus
+
 
 class PriceQuote(BaseModel):
     symbol: str
@@ -10,6 +12,7 @@ class PriceQuote(BaseModel):
     source: str
     as_of: datetime
     is_realtime: bool = False
+    data_status: DataStatus | None = None
 
     @field_validator("symbol")
     @classmethod
@@ -35,6 +38,7 @@ class PriceHistoryPoint(BaseModel):
     close: float = Field(ge=0)
     currency: str = Field(default="INR", min_length=3, max_length=3)
     source: str
+    data_status: DataStatus | None = None
 
 
 class PriceHistoryResponse(BaseModel):
@@ -52,6 +56,7 @@ class CompanyProfile(BaseModel):
     asset_class: str | None = None
     exchange: str | None = None
     source: str
+    data_status: DataStatus | None = None
 
 
 class FxRate(BaseModel):
@@ -61,6 +66,7 @@ class FxRate(BaseModel):
     source: str
     as_of: datetime
     is_realtime: bool = False
+    data_status: DataStatus | None = None
 
 
 class HoldingPriceRefreshItem(BaseModel):
@@ -72,6 +78,7 @@ class HoldingPriceRefreshItem(BaseModel):
     source: str
     as_of: datetime
     is_realtime: bool
+    data_status: DataStatus | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

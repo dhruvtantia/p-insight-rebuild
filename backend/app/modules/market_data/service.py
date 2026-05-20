@@ -90,6 +90,7 @@ class MarketDataService:
                     source=quote.source,
                     as_of=quote.as_of,
                     is_realtime=quote.is_realtime,
+                    data_status=quote.data_status,
                 )
             )
 
@@ -109,12 +110,12 @@ class MarketDataService:
 
     def _build_provider(self) -> MarketDataProvider:
         settings = get_settings()
-        provider_name = settings.market_data_provider.strip().lower()
-        if provider_name in {"india", "indian"}:
-            provider_name = settings.indian_market_data_provider.strip().lower()
+        provider_name = settings.resolved_market_data_provider
         if provider_name == "mock":
+            self._ensure_mock_market_data_allowed(settings=settings)
             return MockProvider()
         if provider_name == "mock_india":
+            self._ensure_mock_market_data_allowed(settings=settings)
             return MockProviderIndia()
         if provider_name in {"twelve_data", "twelvedata"}:
             return TwelveDataProvider(api_key=settings.twelve_data_api_key)
@@ -131,6 +132,12 @@ class MarketDataService:
         if provider_name == "fmp":
             return FmpProvider(api_key=settings.fmp_api_key or settings.market_data_api_key)
         raise ValidationAppError(f"Unsupported market data provider: {settings.market_data_provider}")
+
+    def _ensure_mock_market_data_allowed(self, *, settings) -> None:
+        if settings.normalized_app_env == "production" and not settings.production_mock_market_data_allowed:
+            raise ValidationAppError(
+                "Mock market data is disabled in production. Set ALLOW_PRODUCTION_MOCK_MARKET_DATA=true only for explicit test/demo deployments."
+            )
 
     def _cache_price(self, quote: PriceQuote) -> AssetPrice:
         asset = self._get_or_create_asset(symbol=quote.symbol, currency=quote.currency)
