@@ -1,0 +1,11 @@
+symbol,company_name,quantity,average_cost,currency,sector,asset_class,exchange
+RELIANCE,Reliance Industries Ltd.,8,2420,INR,Energy,Equity,NSE
+TCS,Tata Consultancy Services Ltd.,4,3480,INR,Information Technology,Equity,NSE
+INFY,Infosys Ltd.,7,1395,INR,Information Technology,Equity,NSE
+HDFCBANK,HDFC Bank Ltd.,10,1510,INR,Financial Services,Equity,NSE
+ICICIBANK,ICICI Bank Ltd.,12,960,INR,Financial Services,Equity,NSE
+SBIN,State Bank of India,15,610,INR,Financial Services,Equity,NSE
+ITC,ITC Ltd.,20,390,INR,Consumer Staples,Equity,NSE
+LT,Larsen & Toubro Ltd.,3,3020,INR,Industrials,Equity,NSE
+BHARTIARTL,Bharti Airtel Ltd.,9,1040,INR,Communication Services,Equity,NSE
+NIFTY50,NIFTY 50 Index,1,22500,INR,Benchmark,Index,NSE

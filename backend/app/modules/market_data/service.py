@@ -8,7 +8,7 @@ from app.core.errors import ValidationAppError
 from app.db.models import Asset, AssetPrice, Holding, User
 from app.modules.market_data.providers.base import MarketDataProvider
 from app.modules.market_data.providers.fmp_provider import FmpProvider
-from app.modules.market_data.providers.mock_provider import MockProvider
+from app.modules.market_data.providers.mock_provider import MockProvider, MockProviderIndia
 from app.modules.market_data.providers.polygon_provider import PolygonProvider
 from app.modules.market_data.schemas import (
     BatchPriceResponse,
@@ -102,8 +102,10 @@ class MarketDataService:
     def _build_provider(self) -> MarketDataProvider:
         settings = get_settings()
         provider_name = settings.market_data_provider.strip().lower()
-        if provider_name in {"mock", "mock_india"}:
+        if provider_name == "mock":
             return MockProvider()
+        if provider_name == "mock_india":
+            return MockProviderIndia()
         if provider_name in {"polygon", "massive"}:
             return PolygonProvider(api_key=settings.polygon_api_key or settings.market_data_api_key)
         if provider_name == "fmp":

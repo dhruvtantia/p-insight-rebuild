@@ -7,9 +7,44 @@ from app.modules.market_data.schemas import CompanyProfile, FxRate, PriceHistory
 
 MOCK_AS_OF = datetime(2026, 1, 1, tzinfo=UTC)
 
+INDIA_EQUITY_PROVIDER_SYMBOLS = {
+    "RELIANCE": "RELIANCE.NS",
+    "TCS": "TCS.NS",
+    "INFY": "INFY.NS",
+    "HDFCBANK": "HDFCBANK.NS",
+    "ICICIBANK": "ICICIBANK.NS",
+    "SBIN": "SBIN.NS",
+    "ITC": "ITC.NS",
+    "LT": "LT.NS",
+    "BHARTIARTL": "BHARTIARTL.NS",
+}
+INDIA_INDEX_PROVIDER_SYMBOLS = {
+    "NIFTY50": "^NSEI",
+    "NIFTY 50": "^NSEI",
+}
+INDIA_PROVIDER_TO_DEMO_SYMBOL = {
+    **{provider_symbol: symbol for symbol, provider_symbol in INDIA_EQUITY_PROVIDER_SYMBOLS.items()},
+    "^NSEI": "NIFTY50",
+}
+
+
+def normalize_india_symbol_for_provider(symbol: str) -> str:
+    cleaned = symbol.strip().upper()
+    if not cleaned:
+        raise ValueError("Symbol cannot be empty")
+    if cleaned in INDIA_INDEX_PROVIDER_SYMBOLS:
+        return INDIA_INDEX_PROVIDER_SYMBOLS[cleaned]
+    if cleaned in INDIA_EQUITY_PROVIDER_SYMBOLS:
+        return INDIA_EQUITY_PROVIDER_SYMBOLS[cleaned]
+    if cleaned.endswith(".NS") or cleaned.startswith("^"):
+        return cleaned
+    return f"{cleaned}.NS"
+
 
 class MockProvider(MarketDataProvider):
     source = "mock"
+    currency = "USD"
+    default_exchange: str | None = None
     common_prices: dict[str, float] = {
         "AAPL": 210.12,
         "MSFT": 425.44,
@@ -27,7 +62,7 @@ class MockProvider(MarketDataProvider):
         return PriceQuote(
             symbol=normalized_symbol,
             price=self._price_for_symbol(normalized_symbol),
-            currency="USD",
+            currency=self.currency,
             source=self.source,
             as_of=MOCK_AS_OF,
             is_realtime=False,
@@ -54,7 +89,7 @@ class MockProvider(MarketDataProvider):
                     symbol=normalized_symbol,
                     date=current.isoformat(),
                     close=round(base_price * (1 + daily_offset), 2),
-                    currency="USD",
+                    currency=self.currency,
                     source=self.source,
                 )
             )
@@ -67,10 +102,10 @@ class MockProvider(MarketDataProvider):
         return CompanyProfile(
             symbol=normalized_symbol,
             company_name=f"{normalized_symbol} Mock Company",
-            currency="USD",
+            currency=self.currency,
             sector="Unknown",
             asset_class="equity",
-            exchange=None,
+            exchange=self.default_exchange,
             source=self.source,
         )
 
@@ -114,3 +149,61 @@ class MockProvider(MarketDataProvider):
         if not cleaned:
             raise ValueError("Symbol cannot be empty")
         return cleaned
+
+
+class MockProviderIndia(MockProvider):
+    source = "mock_india"
+    currency = "INR"
+    default_exchange = "NSE"
+    common_prices: dict[str, float] = {
+        "RELIANCE.NS": 2842.15,
+        "TCS.NS": 3925.8,
+        "INFY.NS": 1518.4,
+        "HDFCBANK.NS": 1642.25,
+        "ICICIBANK.NS": 1088.35,
+        "SBIN.NS": 742.5,
+        "ITC.NS": 438.7,
+        "LT.NS": 3560.1,
+        "BHARTIARTL.NS": 1216.9,
+        "^NSEI": 22530.7,
+    }
+    company_profiles: dict[str, dict[str, str]] = {
+        "RELIANCE.NS": {"company_name": "Reliance Industries Ltd.", "sector": "Energy"},
+        "TCS.NS": {"company_name": "Tata Consultancy Services Ltd.", "sector": "Information Technology"},
+        "INFY.NS": {"company_name": "Infosys Ltd.", "sector": "Information Technology"},
+        "HDFCBANK.NS": {"company_name": "HDFC Bank Ltd.", "sector": "Financial Services"},
+        "ICICIBANK.NS": {"company_name": "ICICI Bank Ltd.", "sector": "Financial Services"},
+        "SBIN.NS": {"company_name": "State Bank of India", "sector": "Financial Services"},
+        "ITC.NS": {"company_name": "ITC Ltd.", "sector": "Consumer Staples"},
+        "LT.NS": {"company_name": "Larsen & Toubro Ltd.", "sector": "Industrials"},
+        "BHARTIARTL.NS": {"company_name": "Bharti Airtel Ltd.", "sector": "Communication Services"},
+        "^NSEI": {"company_name": "NIFTY 50 Index", "sector": "Benchmark"},
+    }
+
+    def get_company_profile(self, symbol: str) -> CompanyProfile:
+        normalized_symbol = self._normalize_symbol(symbol)
+        provider_symbol = normalize_india_symbol_for_provider(normalized_symbol)
+        profile = self.company_profiles.get(provider_symbol)
+        return CompanyProfile(
+            symbol=normalized_symbol,
+            company_name=profile["company_name"] if profile else f"{normalized_symbol} Mock India Company",
+            currency=self.currency,
+            sector=profile["sector"] if profile else "Unknown",
+            asset_class="index" if provider_symbol == "^NSEI" else "equity",
+            exchange="NSE",
+            source=self.source,
+        )
+
+    def _price_for_symbol(self, symbol: str) -> float:
+        provider_symbol = normalize_india_symbol_for_provider(symbol)
+        if provider_symbol in self.common_prices:
+            return self.common_prices[provider_symbol]
+        digest = sha256(provider_symbol.encode("utf-8")).hexdigest()
+        paise = 10_000 + int(digest[:8], 16) % 490_000
+        return round(paise / 100, 2)
+
+    def _normalize_symbol(self, symbol: str) -> str:
+        cleaned = symbol.strip().upper()
+        if not cleaned:
+            raise ValueError("Symbol cannot be empty")
+        return INDIA_PROVIDER_TO_DEMO_SYMBOL.get(cleaned, cleaned)

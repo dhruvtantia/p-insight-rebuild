@@ -10,7 +10,11 @@ from app.db.base import Base
 from app.db.models import AssetPrice, Holding
 from app.db.session import get_db
 from app.main import create_app
-from app.modules.market_data.providers.mock_provider import MockProvider
+from app.modules.market_data.providers.mock_provider import (
+    MockProvider,
+    MockProviderIndia,
+    normalize_india_symbol_for_provider,
+)
 
 
 @pytest.fixture()
@@ -85,6 +89,30 @@ def test_mock_provider_batch_prices() -> None:
 
     assert [quote.symbol for quote in quotes] == ["AAPL", "MSFT"]
     assert [quote.price for quote in quotes] == [210.12, 425.44]
+
+
+def test_mock_india_provider_returns_inr_mock_prices() -> None:
+    provider = MockProviderIndia()
+
+    reliance = provider.get_latest_price("reliance")
+    nifty = provider.get_latest_price("NIFTY50")
+
+    assert reliance.symbol == "RELIANCE"
+    assert reliance.price == 2842.15
+    assert reliance.currency == "INR"
+    assert reliance.source == "mock_india"
+    assert reliance.is_realtime is False
+    assert nifty.symbol == "NIFTY50"
+    assert nifty.price == 22530.7
+    assert nifty.currency == "INR"
+    assert nifty.source == "mock_india"
+
+
+def test_india_symbol_normalization_for_future_providers() -> None:
+    assert normalize_india_symbol_for_provider("RELIANCE") == "RELIANCE.NS"
+    assert normalize_india_symbol_for_provider("tcs") == "TCS.NS"
+    assert normalize_india_symbol_for_provider("NIFTY50") == "^NSEI"
+    assert normalize_india_symbol_for_provider("INFY.NS") == "INFY.NS"
 
 
 def test_unknown_symbol_deterministic_price() -> None:

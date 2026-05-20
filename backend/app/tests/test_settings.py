@@ -9,6 +9,9 @@ def test_settings_load_defaults() -> None:
     assert settings.demo_mode_enabled is True
     assert settings.market_data_provider == "mock"
     assert settings.ai_provider_mode == "mock"
+    assert settings.twelve_data_api_key is None
+    assert settings.alpha_vantage_api_key is None
+    assert settings.marketstack_api_key is None
     assert "http://localhost:5173" in settings.cors_origin_list
 
 

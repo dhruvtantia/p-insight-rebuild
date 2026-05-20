@@ -37,6 +37,9 @@ MARKET_DATA_PROVIDER=mock
 MARKET_DATA_API_KEY=
 POLYGON_API_KEY=
 FMP_API_KEY=
+TWELVE_DATA_API_KEY=
+ALPHA_VANTAGE_API_KEY=
+MARKETSTACK_API_KEY=
 PLAID_CLIENT_ID=
 PLAID_SECRET=
 PLAID_ENV=
@@ -51,3 +54,5 @@ SENTRY_DSN=
 ```
 
 Backend variables own all secrets and integration keys.
+
+For local Indian-market demos, set `MARKET_DATA_PROVIDER=mock_india`. This uses deterministic INR mock prices only. `TWELVE_DATA_API_KEY`, `ALPHA_VANTAGE_API_KEY`, and `MARKETSTACK_API_KEY` are reserved placeholders for future backend-only provider integrations; no real provider calls are implemented.

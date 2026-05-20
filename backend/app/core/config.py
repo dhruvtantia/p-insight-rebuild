@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     market_data_api_key: str | None = None
     polygon_api_key: str | None = None
     fmp_api_key: str | None = None
+    twelve_data_api_key: str | None = None
+    alpha_vantage_api_key: str | None = None
+    marketstack_api_key: str | None = None
 
     openai_api_key: str | None = None
     anthropic_api_key: str | None = None

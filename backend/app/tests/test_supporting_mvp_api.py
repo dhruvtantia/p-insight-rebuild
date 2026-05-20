@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from app.core.config import get_settings
 from app.db import models  # noqa: F401
 from app.db.base import Base
 from app.db.models import BrokerConnection
@@ -43,6 +44,42 @@ def client(tmp_path) -> Generator[TestClient, None, None]:
 
     app.dependency_overrides.clear()
     Base.metadata.drop_all(bind=engine)
+
+
+@pytest.fixture()
+def india_client(tmp_path, monkeypatch) -> Generator[TestClient, None, None]:
+    monkeypatch.setenv("MARKET_DATA_PROVIDER", "mock_india")
+    get_settings.cache_clear()
+
+    engine = create_engine(
+        f"sqlite:///{tmp_path}/p_insight_india_demo_test.db",
+        connect_args={"check_same_thread": False},
+        future=True,
+    )
+    TestingSessionLocal = sessionmaker(
+        bind=engine,
+        autoflush=False,
+        autocommit=False,
+        expire_on_commit=False,
+    )
+    Base.metadata.create_all(bind=engine)
+
+    def override_get_db() -> Generator[Session, None, None]:
+        db = TestingSessionLocal()
+        try:
+            yield db
+        finally:
+            db.close()
+
+    app = create_app()
+    app.dependency_overrides[get_db] = override_get_db
+
+    with TestClient(app) as test_client:
+        yield test_client
+
+    app.dependency_overrides.clear()
+    Base.metadata.drop_all(bind=engine)
+    get_settings.cache_clear()
 
 
 def test_watchlist_crud(client: TestClient) -> None:
@@ -156,4 +193,47 @@ def test_demo_seed_endpoint_creates_portfolio_holdings_and_prices(client: TestCl
     assert holdings_response.status_code == 200
     holdings = holdings_response.json()
     assert {holding["symbol"] for holding in holdings} == {"AAPL", "MSFT", "NVDA", "SPY", "TSLA"}
+    assert all(holding["current_price"] is not None for holding in holdings)
+
+
+def test_demo_seed_endpoint_can_create_india_demo_portfolio(india_client: TestClient) -> None:
+    response = india_client.post("/api/demo/seed")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["portfolio_name"] == "Demo India Portfolio"
+    assert body["holdings_count"] == 9
+    assert body["symbols"] == [
+        "RELIANCE",
+        "TCS",
+        "INFY",
+        "HDFCBANK",
+        "ICICIBANK",
+        "SBIN",
+        "ITC",
+        "LT",
+        "BHARTIARTL",
+    ]
+
+    portfolios_response = india_client.get("/api/portfolios")
+    assert portfolios_response.status_code == 200
+    portfolio = portfolios_response.json()[0]
+    assert portfolio["base_currency"] == "INR"
+    assert portfolio["benchmark_symbol"] == "NIFTY50"
+
+    holdings_response = india_client.get(f"/api/portfolios/{portfolio['id']}/holdings")
+    assert holdings_response.status_code == 200
+    holdings = holdings_response.json()
+    assert {holding["currency"] for holding in holdings} == {"INR"}
+    assert {holding["symbol"] for holding in holdings} == {
+        "RELIANCE",
+        "TCS",
+        "INFY",
+        "HDFCBANK",
+        "ICICIBANK",
+        "SBIN",
+        "ITC",
+        "LT",
+        "BHARTIARTL",
+    }
     assert all(holding["current_price"] is not None for holding in holdings)
