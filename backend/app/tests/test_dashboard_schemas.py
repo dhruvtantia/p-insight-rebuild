@@ -25,32 +25,32 @@ def test_dashboard_bundle_response_supports_backend_native_contract() -> None:
         kpis=DashboardKpis(
             portfolio_id="portfolio-1",
             base_currency="inr",
-            total_portfolio_value=250000,
-            total_cost_basis=210000,
-            total_unrealized_gain_loss=40000,
-            total_unrealized_gain_loss_pct=0.1904,
-            daily_change=None,
-            daily_change_pct=None,
+            total_invested=210000,
+            current_value=250000,
+            unrealized_pnl=40000,
+            return_percent=0.1904,
             holdings_count=3,
             priced_holdings_count=2,
             largest_holding_symbol=" reliance ",
             largest_holding_weight=0.52,
             cash_weight=None,
         ),
-        allocations=[
-            DashboardAllocationItem(
-                dimension="asset_class",
-                name="Equity",
-                value=250000,
-                weight=1,
-                symbols=[" reliance ", "tcs"],
-            ),
+        sector_allocation=[
             DashboardAllocationItem(
                 dimension="sector",
                 name="Information Technology",
                 value=120000,
                 weight=0.48,
                 symbols=["tcs"],
+            ),
+        ],
+        asset_allocation=[
+            DashboardAllocationItem(
+                dimension="asset_class",
+                name="Equity",
+                value=250000,
+                weight=1,
+                symbols=[" reliance ", "tcs"],
             ),
         ],
         top_holdings=[
@@ -69,7 +69,8 @@ def test_dashboard_bundle_response_supports_backend_native_contract() -> None:
             concentration_status="moderate",
             largest_holding_symbol="reliance",
             largest_holding_weight=0.52,
-            top_5_weight=1,
+            top_3_weight=1,
+            hhi=0.5008,
             volatility=None,
             volatility_status="insufficient_history",
             sharpe_ratio=None,
@@ -105,7 +106,7 @@ def test_dashboard_bundle_response_supports_backend_native_contract() -> None:
 
     assert payload["kpis"]["base_currency"] == "INR"
     assert payload["kpis"]["largest_holding_symbol"] == "RELIANCE"
-    assert payload["allocations"][0]["symbols"] == ["RELIANCE", "TCS"]
+    assert payload["asset_allocation"][0]["symbols"] == ["RELIANCE", "TCS"]
     assert payload["top_holdings"][0]["symbol"] == "RELIANCE"
     assert payload["top_holdings"][0]["currency"] == "INR"
     assert payload["action_items"][0]["affected_symbols"] == ["INFY", "TCS"]
@@ -131,7 +132,8 @@ def test_dashboard_schema_rejects_invalid_statuses_and_weights() -> None:
             concentration_status="critical",
             largest_holding_symbol="RELIANCE",
             largest_holding_weight=1.2,
-            top_5_weight=1.1,
+            top_3_weight=1.1,
+            hhi=1.1,
             volatility=None,
             volatility_status="missing",
             sharpe_ratio=None,

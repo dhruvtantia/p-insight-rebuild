@@ -10,6 +10,7 @@ from app.modules.dashboard.schemas import (
     DashboardRiskSummary,
     DashboardTopHolding,
 )
+from app.modules.dashboard.service import DashboardService
 
 __all__ = [
     "DashboardActionItem",
@@ -19,5 +20,6 @@ __all__ = [
     "DashboardKpis",
     "DashboardRiskSummary",
     "DashboardTopHolding",
+    "DashboardService",
     "DataStatus",
 ]

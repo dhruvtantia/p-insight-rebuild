@@ -9,12 +9,10 @@ from app.modules.common.data_status import DataStatus
 class DashboardKpis(BaseModel):
     portfolio_id: str
     base_currency: str = Field(min_length=3, max_length=3)
-    total_portfolio_value: float = Field(ge=0)
-    total_cost_basis: float = Field(ge=0)
-    total_unrealized_gain_loss: float
-    total_unrealized_gain_loss_pct: float | None = None
-    daily_change: float | None = None
-    daily_change_pct: float | None = None
+    total_invested: float = Field(ge=0)
+    current_value: float = Field(ge=0)
+    unrealized_pnl: float
+    return_percent: float | None = None
     holdings_count: int = Field(ge=0)
     priced_holdings_count: int = Field(ge=0)
     largest_holding_symbol: str | None = None
@@ -76,7 +74,8 @@ class DashboardRiskSummary(BaseModel):
     concentration_status: Literal["empty", "ok", "moderate", "high"]
     largest_holding_symbol: str | None = None
     largest_holding_weight: float | None = Field(default=None, ge=0, le=1)
-    top_5_weight: float = Field(ge=0, le=1)
+    top_3_weight: float = Field(ge=0, le=1)
+    hhi: float = Field(ge=0, le=1)
     volatility: float | None = None
     volatility_status: Literal["ok", "insufficient_history"]
     sharpe_ratio: float | None = None
@@ -130,7 +129,8 @@ class DashboardBundleResponse(BaseModel):
     portfolio_id: str
     generated_at: datetime
     kpis: DashboardKpis
-    allocations: list[DashboardAllocationItem] = Field(default_factory=list)
+    sector_allocation: list[DashboardAllocationItem] = Field(default_factory=list)
+    asset_allocation: list[DashboardAllocationItem] = Field(default_factory=list)
     top_holdings: list[DashboardTopHolding] = Field(default_factory=list)
     risk: DashboardRiskSummary
     data_quality: DashboardDataQuality
