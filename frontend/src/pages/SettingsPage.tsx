@@ -35,14 +35,14 @@ export function SettingsPage() {
           <div className="mt-5 grid gap-4">
             <Field label="Base currency preference">
               <select disabled className="h-10 rounded-md border border-line bg-surface px-3 text-sm text-slate-500">
-                <option>USD</option>
+                <option>INR</option>
               </select>
             </Field>
             <Field label="Default benchmark">
-              <Input value="SPY" disabled />
+              <Input value="NIFTY50" disabled />
             </Field>
             <Field label="Risk-free rate assumption">
-              <Input value="0.04" disabled />
+              <Input value="0.065" disabled />
             </Field>
           </div>
           <p className="mt-4 text-sm leading-6 text-slate-600">
@@ -94,7 +94,7 @@ function SettingsHeader() {
       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">Settings</p>
       <h1 className="mt-1 text-3xl font-semibold">Account settings</h1>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-        Profile and default assumptions are visible as placeholders while auth and preference persistence are formalized.
+        Indian market defaults are visible as placeholders while auth and preference persistence are formalized.
       </p>
     </section>
   );

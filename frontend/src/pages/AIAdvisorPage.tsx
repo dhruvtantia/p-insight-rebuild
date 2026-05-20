@@ -248,8 +248,8 @@ function ContextPanel({
       ) : (
         <div className="mt-5 grid gap-4">
           <ContextMetric label="Base currency" value={selectedPortfolio?.base_currency ?? "N/A"} />
-          <ContextMetric label="Total value" value={formatCurrency(summary?.total_portfolio_value ?? null, summary?.base_currency ?? "USD")} />
-          <ContextMetric label="Total P/L" value={formatCurrency(summary?.total_unrealized_gain_loss ?? null, summary?.base_currency ?? "USD")} />
+          <ContextMetric label="Total value" value={formatCurrency(summary?.total_portfolio_value ?? null, summary?.base_currency ?? "INR")} />
+          <ContextMetric label="Total P/L" value={formatCurrency(summary?.total_unrealized_gain_loss ?? null, summary?.base_currency ?? "INR")} />
           <ContextMetric label="Total P/L %" value={formatPercent(summary?.total_unrealized_gain_loss_pct ?? null)} />
           <ContextMetric label="Holdings" value={summary ? String(summary.holdings.length) : "N/A"} />
           <ContextMetric label="Largest holding" value={summary?.largest_holding?.symbol ?? "N/A"} />

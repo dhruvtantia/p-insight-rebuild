@@ -91,6 +91,25 @@ def test_create_portfolio(client: TestClient) -> None:
     assert portfolio["updated_at"]
 
 
+def test_create_portfolio_defaults_to_inr_and_nifty50(client: TestClient) -> None:
+    response = client.post("/api/portfolios", json={"name": "India Core"})
+
+    assert response.status_code == 201
+    portfolio = response.json()
+    assert portfolio["base_currency"] == "INR"
+    assert portfolio["benchmark_symbol"] == "NIFTY50"
+
+
+def test_nifty50_benchmark_name_is_normalized(client: TestClient) -> None:
+    response = client.post(
+        "/api/portfolios",
+        json={"name": "Benchmark Portfolio", "benchmark_symbol": "NIFTY 50"},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["benchmark_symbol"] == "NIFTY50"
+
+
 def test_list_portfolios(client: TestClient) -> None:
     create_portfolio(client, name="Core Portfolio")
     create_portfolio(client, name="Satellite Portfolio")
@@ -143,6 +162,24 @@ def test_create_holding(client: TestClient) -> None:
     assert holding["quantity"] == 10
     assert holding["market_value"] == 1250
     assert holding["unrealized_gain_loss"] == 250
+
+
+def test_create_indian_holding_normalizes_symbol_defaults(client: TestClient) -> None:
+    portfolio_response = client.post("/api/portfolios", json={"name": "India Portfolio"})
+    assert portfolio_response.status_code == 201
+    portfolio = portfolio_response.json()
+
+    response = client.post(
+        f"/api/portfolios/{portfolio['id']}/holdings",
+        json={"symbol": "NSE:reliance", "quantity": 10, "average_cost": 2800},
+    )
+
+    assert response.status_code == 201
+    holding = response.json()
+    assert holding["symbol"] == "RELIANCE"
+    assert holding["currency"] == "INR"
+    assert holding["exchange"] == "NSE"
+    assert holding["asset_class"] == "Equity"
 
 
 def test_list_holdings(client: TestClient) -> None:

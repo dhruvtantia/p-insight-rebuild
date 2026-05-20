@@ -2,6 +2,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
+from app.modules.market_data.symbols import normalize_market_symbol
+
 
 class HoldingBase(BaseModel):
     symbol: str = Field(min_length=1, max_length=24)
@@ -9,7 +11,7 @@ class HoldingBase(BaseModel):
     quantity: float = Field(gt=0)
     average_cost: float | None = Field(default=None, ge=0)
     current_price: float | None = Field(default=None, ge=0)
-    currency: str = Field(default="USD", min_length=3, max_length=3)
+    currency: str = Field(default="INR", min_length=3, max_length=3)
     sector: str | None = Field(default=None, max_length=120)
     asset_class: str | None = Field(default=None, max_length=80)
     exchange: str | None = Field(default=None, max_length=80)
@@ -17,10 +19,7 @@ class HoldingBase(BaseModel):
     @field_validator("symbol")
     @classmethod
     def normalize_symbol(cls, value: str) -> str:
-        cleaned = value.strip().upper()
-        if not cleaned:
-            raise ValueError("Symbol cannot be empty")
-        return cleaned
+        return normalize_market_symbol(value).normalized_symbol
 
     @field_validator("currency")
     @classmethod
@@ -48,10 +47,7 @@ class HoldingUpdate(BaseModel):
     def normalize_optional_symbol(cls, value: str | None) -> str | None:
         if value is None:
             return None
-        cleaned = value.strip().upper()
-        if not cleaned:
-            raise ValueError("Symbol cannot be empty")
-        return cleaned
+        return normalize_market_symbol(value).normalized_symbol
 
     @field_validator("currency")
     @classmethod

@@ -180,29 +180,8 @@ def test_demo_seed_endpoint_creates_portfolio_holdings_and_prices(client: TestCl
 
     assert response.status_code == 200
     body = response.json()
-    assert body["portfolio_name"] == "Demo Growth Portfolio"
-    assert body["holdings_count"] == 5
-    assert body["symbols"] == ["AAPL", "MSFT", "NVDA", "SPY", "TSLA"]
-
-    portfolios_response = client.get("/api/portfolios")
-    assert portfolios_response.status_code == 200
-    portfolio = portfolios_response.json()[0]
-    assert portfolio["name"] == "Demo Growth Portfolio"
-
-    holdings_response = client.get(f"/api/portfolios/{portfolio['id']}/holdings")
-    assert holdings_response.status_code == 200
-    holdings = holdings_response.json()
-    assert {holding["symbol"] for holding in holdings} == {"AAPL", "MSFT", "NVDA", "SPY", "TSLA"}
-    assert all(holding["current_price"] is not None for holding in holdings)
-
-
-def test_demo_seed_endpoint_can_create_india_demo_portfolio(india_client: TestClient) -> None:
-    response = india_client.post("/api/demo/seed")
-
-    assert response.status_code == 200
-    body = response.json()
     assert body["portfolio_name"] == "Demo India Portfolio"
-    assert body["holdings_count"] == 9
+    assert body["holdings_count"] == 10
     assert body["symbols"] == [
         "RELIANCE",
         "TCS",
@@ -213,6 +192,53 @@ def test_demo_seed_endpoint_can_create_india_demo_portfolio(india_client: TestCl
         "ITC",
         "LT",
         "BHARTIARTL",
+        "NIFTYBEES",
+    ]
+
+    portfolios_response = client.get("/api/portfolios")
+    assert portfolios_response.status_code == 200
+    portfolio = portfolios_response.json()[0]
+    assert portfolio["name"] == "Demo India Portfolio"
+    assert portfolio["base_currency"] == "INR"
+    assert portfolio["benchmark_symbol"] == "NIFTY50"
+
+    holdings_response = client.get(f"/api/portfolios/{portfolio['id']}/holdings")
+    assert holdings_response.status_code == 200
+    holdings = holdings_response.json()
+    assert {holding["currency"] for holding in holdings} == {"INR"}
+    assert {holding["symbol"] for holding in holdings} == {
+        "RELIANCE",
+        "TCS",
+        "INFY",
+        "HDFCBANK",
+        "ICICIBANK",
+        "SBIN",
+        "ITC",
+        "LT",
+        "BHARTIARTL",
+        "NIFTYBEES",
+    }
+    assert all(holding["current_price"] is not None for holding in holdings)
+
+
+def test_demo_seed_endpoint_can_create_india_demo_portfolio(india_client: TestClient) -> None:
+    response = india_client.post("/api/demo/seed")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["portfolio_name"] == "Demo India Portfolio"
+    assert body["holdings_count"] == 10
+    assert body["symbols"] == [
+        "RELIANCE",
+        "TCS",
+        "INFY",
+        "HDFCBANK",
+        "ICICIBANK",
+        "SBIN",
+        "ITC",
+        "LT",
+        "BHARTIARTL",
+        "NIFTYBEES",
     ]
 
     portfolios_response = india_client.get("/api/portfolios")
@@ -235,5 +261,6 @@ def test_demo_seed_endpoint_can_create_india_demo_portfolio(india_client: TestCl
         "ITC",
         "LT",
         "BHARTIARTL",
+        "NIFTYBEES",
     }
     assert all(holding["current_price"] is not None for holding in holdings)

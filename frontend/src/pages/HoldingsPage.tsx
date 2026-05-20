@@ -22,7 +22,7 @@ const holdingSchema = z.object({
   quantity: z.string().trim().refine((value) => Number(value) > 0, "Quantity must be positive"),
   average_cost: optionalMoney,
   current_price: optionalMoney,
-  currency: z.string().trim().length(3, "Use a 3-letter currency code").default("USD"),
+  currency: z.string().trim().length(3, "Use a 3-letter currency code").default("INR"),
   sector: z.string().trim().max(120).optional(),
   asset_class: z.string().trim().max(80).optional(),
   exchange: z.string().trim().max(80).optional()
@@ -36,7 +36,7 @@ const defaultHoldingValues: HoldingFormValues = {
   quantity: "",
   average_cost: "",
   current_price: "",
-  currency: "USD",
+  currency: "INR",
   sector: "",
   asset_class: "",
   exchange: ""
@@ -242,7 +242,7 @@ function HoldingsHeader() {
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">Holdings</p>
         <h1 className="mt-1 text-3xl font-semibold">Manual holdings</h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-          Add, edit, and delete holdings through the backend portfolio APIs. Upload imports are staged and validated before holdings are created.
+          Add, edit, and delete Indian equity holdings through the backend portfolio APIs. NSE/BSE upload imports are staged and validated before holdings are created.
         </p>
       </div>
       <Link to="/upload">
@@ -415,10 +415,10 @@ function HoldingForm({
       <form className="mt-4 grid gap-4" onSubmit={submit}>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Symbol" error={form.formState.errors.symbol?.message}>
-            <Input placeholder="AAPL" {...form.register("symbol")} />
+            <Input placeholder="RELIANCE" {...form.register("symbol")} />
           </Field>
           <Field label="Name" error={form.formState.errors.company_name?.message}>
-            <Input placeholder="Apple Inc." {...form.register("company_name")} />
+            <Input placeholder="Reliance Industries Ltd" {...form.register("company_name")} />
           </Field>
         </div>
 
@@ -445,10 +445,10 @@ function HoldingForm({
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Exchange" error={form.formState.errors.exchange?.message}>
-            <Input placeholder="NASDAQ" {...form.register("exchange")} />
+            <Input placeholder="NSE" {...form.register("exchange")} />
           </Field>
           <Field label="Currency" error={form.formState.errors.currency?.message}>
-            <Input placeholder="USD" {...form.register("currency")} />
+            <Input placeholder="INR" {...form.register("currency")} />
           </Field>
         </div>
 

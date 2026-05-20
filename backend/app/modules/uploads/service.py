@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.db.models import Portfolio, UploadJob
 from app.db.models import User
 from app.modules.portfolios.service import PortfolioService
+from app.modules.market_data.symbols import normalize_market_symbol
 from app.modules.uploads.errors import UploadJobNotFoundError, UploadValidationError
 from app.modules.uploads.repository import (
     UploadRepository,
@@ -264,12 +265,14 @@ def map_row(raw_row: dict, mapping: dict[str, str]) -> dict:
 def validate_mapped_row(*, mapped: dict, portfolio: Portfolio) -> tuple[dict, list[str]]:
     errors: list[str] = []
     normalized: dict = {}
+    symbol_metadata = None
 
     symbol = clean_string(mapped.get("symbol"))
     if not symbol:
         errors.append("symbol is required")
     else:
-        normalized["symbol"] = symbol.upper()
+        symbol_metadata = normalize_market_symbol(symbol, default_exchange=clean_string(mapped.get("exchange")) or "NSE")
+        normalized["symbol"] = symbol_metadata.normalized_symbol
 
     quantity = parse_optional_number(mapped.get("quantity"))
     if quantity is None:
@@ -295,10 +298,14 @@ def validate_mapped_row(*, mapped: dict, portfolio: Portfolio) -> tuple[dict, li
         normalized["current_price"] = None
 
     normalized["company_name"] = clean_string(mapped.get("company_name"))
-    normalized["currency"] = (clean_string(mapped.get("currency")) or portfolio.base_currency).upper()
+    normalized["currency"] = (clean_string(mapped.get("currency")) or portfolio.base_currency or "INR").upper()
     normalized["sector"] = clean_string(mapped.get("sector"))
-    normalized["asset_class"] = clean_string(mapped.get("asset_class")) or "Equity"
-    normalized["exchange"] = clean_string(mapped.get("exchange"))
+    normalized["asset_class"] = clean_string(mapped.get("asset_class")) or (
+        symbol_metadata.asset_class if symbol_metadata else "Equity"
+    )
+    normalized["exchange"] = clean_string(mapped.get("exchange")) or (
+        symbol_metadata.exchange if symbol_metadata else None
+    )
 
     return normalized, errors
 

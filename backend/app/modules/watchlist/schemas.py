@@ -2,6 +2,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.modules.market_data.symbols import normalize_market_symbol
+
 
 class WatchlistCreate(BaseModel):
     symbol: str = Field(min_length=1, max_length=24)
@@ -11,10 +13,7 @@ class WatchlistCreate(BaseModel):
     @field_validator("symbol")
     @classmethod
     def normalize_symbol(cls, value: str) -> str:
-        cleaned = value.strip().upper()
-        if not cleaned:
-            raise ValueError("Symbol cannot be empty")
-        return cleaned
+        return normalize_market_symbol(value).normalized_symbol
 
     @field_validator("name", "notes")
     @classmethod

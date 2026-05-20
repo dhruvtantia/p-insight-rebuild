@@ -33,7 +33,8 @@ SUPABASE_SERVICE_ROLE_KEY=
 JWT_SECRET=
 OPENAI_API_KEY=
 ANTHROPIC_API_KEY=
-MARKET_DATA_PROVIDER=mock
+MARKET_DATA_PROVIDER=mock_india
+INDIAN_MARKET_DATA_PROVIDER=mock_india
 MARKET_DATA_API_KEY=
 POLYGON_API_KEY=
 FMP_API_KEY=
@@ -55,4 +56,4 @@ SENTRY_DSN=
 
 Backend variables own all secrets and integration keys.
 
-For local Indian-market demos, set `MARKET_DATA_PROVIDER=mock_india`. This uses deterministic INR mock prices only. `TWELVE_DATA_API_KEY`, `ALPHA_VANTAGE_API_KEY`, and `MARKETSTACK_API_KEY` are reserved placeholders for future backend-only provider integrations; no real provider calls are implemented.
+For local Indian-market demos, keep `MARKET_DATA_PROVIDER=mock_india`. This uses deterministic INR mock prices only. `INDIAN_MARKET_DATA_PROVIDER`, `TWELVE_DATA_API_KEY`, `ALPHA_VANTAGE_API_KEY`, and `MARKETSTACK_API_KEY` are reserved placeholders for future backend-only provider integrations; no real provider calls are implemented.

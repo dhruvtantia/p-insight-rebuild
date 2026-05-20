@@ -54,7 +54,7 @@ export function WatchlistPage() {
         <form className="mt-4 grid gap-4 lg:grid-cols-[0.5fr_1fr_1.4fr_auto]" onSubmit={handleSubmit}>
           <label className="grid gap-2">
             <span className="text-sm font-medium text-ink">Symbol</span>
-            <Input placeholder="AAPL" value={symbol} onChange={(event) => setSymbol(event.target.value.toUpperCase())} />
+            <Input placeholder="RELIANCE" value={symbol} onChange={(event) => setSymbol(event.target.value.toUpperCase())} />
           </label>
           <label className="grid gap-2">
             <span className="text-sm font-medium text-ink">Name</span>
@@ -150,7 +150,7 @@ function WatchlistTable({
             {items.map((item) => {
               const quote = priceBySymbol.get(item.symbol);
               const price = quote?.price ?? item.current_price;
-              const currency = quote?.currency ?? item.price_currency ?? "USD";
+              const currency = quote?.currency ?? item.price_currency ?? "INR";
               const source = quote?.source ?? item.price_source;
               return (
                 <tr key={item.id}>

@@ -23,8 +23,8 @@ const optionalFields = [
 ];
 
 const sampleCsv = `Ticker,Name,Shares,Average Cost,Market Value,Currency,Sector,Asset Class,Exchange
-AAPL,Apple Inc.,10,100,1250,USD,Technology,Equity,NASDAQ
-MSFT,Microsoft,5,200,1500,USD,Technology,Equity,NASDAQ`;
+RELIANCE,Reliance Industries Ltd,10,2850,28500,INR,Energy,Equity,NSE
+TCS,Tata Consultancy Services Ltd,5,3800,19000,INR,Information Technology,Equity,NSE`;
 
 export function UploadPage() {
   const portfolios = usePortfolios();
@@ -170,7 +170,7 @@ export function UploadPage() {
         <Card>
           <CardTitle>Step 4: Map columns</CardTitle>
           <p className="mt-2 text-sm text-slate-600">
-            Map P-insight fields to the detected file columns. Symbol and quantity are required.
+            Map P-insight fields to the detected file columns. Indian symbols and quantity are required.
           </p>
           <ColumnMappingForm
             detectedColumns={uploadJob.detected_columns}

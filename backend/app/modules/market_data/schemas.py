@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 class PriceQuote(BaseModel):
     symbol: str
     price: float = Field(ge=0)
-    currency: str = Field(default="USD", min_length=3, max_length=3)
+    currency: str = Field(default="INR", min_length=3, max_length=3)
     source: str
     as_of: datetime
     is_realtime: bool = False
@@ -33,7 +33,7 @@ class PriceHistoryPoint(BaseModel):
     symbol: str
     date: str
     close: float = Field(ge=0)
-    currency: str = Field(default="USD", min_length=3, max_length=3)
+    currency: str = Field(default="INR", min_length=3, max_length=3)
     source: str
 
 
@@ -47,7 +47,7 @@ class PriceHistoryResponse(BaseModel):
 class CompanyProfile(BaseModel):
     symbol: str
     company_name: str | None = None
-    currency: str = "USD"
+    currency: str = "INR"
     sector: str | None = None
     asset_class: str | None = None
     exchange: str | None = None

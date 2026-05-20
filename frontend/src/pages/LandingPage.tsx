@@ -8,7 +8,7 @@ import { demoModeEnabled } from "../lib/env";
 const features = [
   {
     title: "Portfolio analytics",
-    detail: "Track holdings, allocation, concentration, and performance signals from clean portfolio data.",
+    detail: "Track Indian equities, ETFs, allocation, concentration, and performance signals from clean portfolio data.",
     icon: BarChart3
   },
   {
@@ -18,7 +18,7 @@ const features = [
   },
   {
     title: "Broker-ready model",
-    detail: "Manual uploads come first, with broker connections normalizing into the same holdings model later.",
+    detail: "Manual NSE/BSE uploads come first, with broker connections normalizing into the same holdings model later.",
     icon: Building2
   }
 ];
@@ -34,10 +34,10 @@ export function LandingPage() {
           <Badge tone="success">Greenfield MVP</Badge>
           <div className="space-y-4">
             <h1 className="max-w-3xl text-5xl font-semibold leading-tight text-ink">
-              Understand your portfolio in minutes.
+              Understand your Indian equity portfolio in minutes.
             </h1>
             <p className="max-w-2xl text-lg leading-8 text-slate-600">
-              Upload holdings or connect your broker to get analytics, risk insights, and AI-powered explanations.
+              Upload Indian holdings to get INR analytics, risk insights, and mock AI-powered explanations.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -115,7 +115,7 @@ export function LandingPage() {
         <Card>
           <CardTitle>Broker connections coming soon</CardTitle>
           <p className="mt-2 text-sm leading-6 text-slate-600">
-            Plaid, Zerodha, IBKR, and Alpaca are planned as backend-only integrations that normalize into P-insight holdings and transactions.
+            Zerodha and future Indian broker providers are planned as backend-only integrations that normalize into P-insight holdings and transactions.
           </p>
         </Card>
       </section>

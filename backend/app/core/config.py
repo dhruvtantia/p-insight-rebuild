@@ -13,7 +13,8 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+psycopg2://postgres:postgres@localhost:5432/p_insight"
 
-    market_data_provider: str = "mock"
+    market_data_provider: str = "mock_india"
+    indian_market_data_provider: str = "mock_india"
     market_data_api_key: str | None = None
     polygon_api_key: str | None = None
     fmp_api_key: str | None = None

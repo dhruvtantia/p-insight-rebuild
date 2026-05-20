@@ -229,6 +229,34 @@ def test_confirm_import_creates_holdings(client: TestClient) -> None:
     assert holdings.json()[0]["current_price"] == 125
 
 
+def test_indian_csv_upload_normalizes_symbols_and_keeps_inr(client: TestClient) -> None:
+    response = client.post(
+        "/api/portfolios",
+        json={"name": "India Upload Portfolio", "base_currency": "INR", "benchmark_symbol": "NIFTY 50"},
+    )
+    assert response.status_code == 201
+    portfolio = response.json()
+
+    upload = upload_csv(
+        client,
+        portfolio["id"],
+        "Ticker,Name,Shares,Average Cost,Market Value,Currency,Sector,Asset Class,Exchange\n"
+        "RELIANCE.NS,Reliance Industries Ltd,10,2850,28500,INR,Energy,Equity,NSE\n"
+        "BSE:500325,Reliance BSE Line,2,2800,5600,INR,Energy,Equity,BSE\n",
+    )
+    apply_mapping(client, upload["id"])
+    validation = validate_upload(client, upload["id"])
+    confirm = confirm_upload(client, upload["id"])
+    holdings = client.get(f"/api/portfolios/{portfolio['id']}/holdings").json()
+
+    assert validation["upload_job"]["valid_rows"] == 2
+    assert confirm["status"] == "imported"
+    assert confirm["imported_count"] == 2
+    assert sorted(holding["symbol"] for holding in holdings) == ["500325", "RELIANCE"]
+    assert {holding["currency"] for holding in holdings} == {"INR"}
+    assert {holding["exchange"] for holding in holdings} == {"NSE", "BSE"}
+
+
 def test_invalid_rows_do_not_create_holdings(client: TestClient) -> None:
     portfolio = create_portfolio(client)
     upload = upload_csv(

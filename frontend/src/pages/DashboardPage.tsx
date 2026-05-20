@@ -98,8 +98,8 @@ export function DashboardPage() {
       ) : (
         <>
           <div className="grid gap-6 xl:grid-cols-2">
-            <AllocationChart title="Asset allocation" data={allocation.asset_allocation} />
-            <AllocationChart title="Sector allocation" data={allocation.sector_allocation} />
+            <AllocationChart title="Asset allocation" data={allocation.asset_allocation} currency={summary.base_currency} />
+            <AllocationChart title="Sector allocation" data={allocation.sector_allocation} currency={summary.base_currency} />
           </div>
           <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
             <TopHoldingsCard holdings={summary.holdings} currency={summary.base_currency} />
@@ -282,7 +282,7 @@ function EmptyPortfolioCta() {
   );
 }
 
-function AllocationChart({ title, data }: { title: string; data: AllocationBucket[] }) {
+function AllocationChart({ title, data, currency }: { title: string; data: AllocationBucket[]; currency: string }) {
   if (!data.length) {
     return <EmptyState title={title} detail="No priced holdings are available for this allocation." />;
   }
@@ -298,7 +298,7 @@ function AllocationChart({ title, data }: { title: string; data: AllocationBucke
                 <Cell key={bucket.name} fill={CHART_COLORS[index % CHART_COLORS.length]} />
               ))}
             </Pie>
-            <Tooltip formatter={(value) => formatCurrency(Number(value), "USD")} />
+            <Tooltip formatter={(value) => formatCurrency(Number(value), currency)} />
           </RechartsPieChart>
         </ResponsiveContainer>
       </div>

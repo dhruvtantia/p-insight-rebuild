@@ -1,6 +1,6 @@
 symbol,company_name,quantity,average_cost,currency,sector,asset_class,exchange
-AAPL,Apple Inc.,12,145,USD,Technology,Equity,NASDAQ
-MSFT,Microsoft Corporation,8,310,USD,Technology,Equity,NASDAQ
-NVDA,NVIDIA Corporation,18,88,USD,Technology,Equity,NASDAQ
-SPY,SPDR S&P 500 ETF Trust,10,430,USD,ETF,Fund,NYSEARCA
-TSLA,Tesla Inc.,6,210,USD,Consumer Discretionary,Equity,NASDAQ
+RELIANCE,Reliance Industries Ltd,10,2850,INR,Energy,Equity,NSE
+TCS,Tata Consultancy Services Ltd,5,3800,INR,Information Technology,Equity,NSE
+HDFCBANK,HDFC Bank Ltd,12,1450,INR,Financials,Equity,NSE
+INFY,Infosys Ltd,8,1500,INR,Information Technology,Equity,NSE
+ICICIBANK,ICICI Bank Ltd,15,1050,INR,Financials,Equity,NSE

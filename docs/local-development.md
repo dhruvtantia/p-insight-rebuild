@@ -12,9 +12,11 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-For a low-friction local database, set `DATABASE_URL` in `backend/.env` to:
+For a low-friction local Indian-market demo database, set these values in `backend/.env`:
 
 ```bash
+MARKET_DATA_PROVIDER=mock_india
+INDIAN_MARKET_DATA_PROVIDER=mock_india
 DATABASE_URL=sqlite:///./p_insight_local.db
 ```
 
@@ -85,11 +87,11 @@ cd backend
 python -m app.seed_demo
 ```
 
-The demo seed creates a deterministic demo user portfolio with `AAPL`, `MSFT`, `NVDA`, `SPY`, and `TSLA`, including realistic quantities, costs, and mock prices.
+The demo seed creates a deterministic Indian demo user portfolio with `RELIANCE`, `TCS`, `HDFCBANK`, `INFY`, `ICICIBANK`, `SBIN`, `ITC`, `BHARTIARTL`, and `NIFTYBEES`, including realistic quantities, costs, and mock INR prices.
 
 ## Upload Sample
 
-Use [sample_portfolio.csv](sample_portfolio.csv) for CSV upload testing.
+Use [sample_india_portfolio.csv](sample_india_portfolio.csv) for India CSV upload testing. [sample_portfolio.csv](sample_portfolio.csv) mirrors the India-first template for the default upload path.
 
 ## Test Commands
 
@@ -118,7 +120,7 @@ npm run build
 1. Open the landing page.
 2. Use placeholder login or click **Try demo portfolio**.
 3. Create or seed a portfolio.
-4. Add a holding manually or upload `docs/sample_portfolio.csv`.
+4. Add an NSE/BSE holding manually or upload `docs/sample_india_portfolio.csv`.
 5. Validate and confirm the upload.
 6. Refresh prices from Holdings or Dashboard.
 7. Review Dashboard analytics.

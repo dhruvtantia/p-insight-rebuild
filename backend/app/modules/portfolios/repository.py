@@ -10,7 +10,9 @@ class PortfolioRepository:
         self.db = db
 
     def create(self, *, user: User, data: PortfolioCreate) -> Portfolio:
-        portfolio = Portfolio(user_id=user.id, **data.model_dump())
+        create_data = data.model_dump()
+        create_data["benchmark_symbol"] = create_data["benchmark_symbol"] or "NIFTY50"
+        portfolio = Portfolio(user_id=user.id, **create_data)
         self.db.add(portfolio)
         self.db.commit()
         self.db.refresh(portfolio)

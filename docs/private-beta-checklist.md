@@ -19,7 +19,7 @@ Use this checklist before inviting beta users.
 
 - [ ] Test backend health endpoint: `GET /api/health`.
 - [ ] Test create portfolio.
-- [ ] Test upload flow with `docs/sample_portfolio.csv`.
+- [ ] Test upload flow with `docs/sample_india_portfolio.csv`.
 - [ ] Test dashboard loads summary data.
 - [ ] Test holdings page loads positions.
 - [ ] Test analytics page loads allocation, performance, and risk data.

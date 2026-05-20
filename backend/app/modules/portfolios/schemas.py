@@ -2,10 +2,12 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.modules.market_data.symbols import normalize_benchmark_symbol
+
 
 class PortfolioBase(BaseModel):
     name: str = Field(min_length=1, max_length=120)
-    base_currency: str = Field(default="USD", min_length=3, max_length=3)
+    base_currency: str = Field(default="INR", min_length=3, max_length=3)
     benchmark_symbol: str | None = Field(default=None, max_length=24)
     risk_free_rate: float | None = None
 
@@ -25,10 +27,7 @@ class PortfolioBase(BaseModel):
     @field_validator("benchmark_symbol")
     @classmethod
     def normalize_benchmark_symbol(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        cleaned = value.strip().upper()
-        return cleaned or None
+        return normalize_benchmark_symbol(value)
 
 
 class PortfolioCreate(PortfolioBase):
@@ -59,10 +58,7 @@ class PortfolioUpdate(BaseModel):
     @field_validator("benchmark_symbol")
     @classmethod
     def normalize_optional_benchmark_symbol(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        cleaned = value.strip().upper()
-        return cleaned or None
+        return normalize_benchmark_symbol(value)
 
 
 class PortfolioResponse(BaseModel):

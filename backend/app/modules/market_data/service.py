@@ -8,6 +8,13 @@ from app.core.errors import ValidationAppError
 from app.db.models import Asset, AssetPrice, Holding, User
 from app.modules.market_data.providers.base import MarketDataProvider
 from app.modules.market_data.providers.fmp_provider import FmpProvider
+from app.modules.market_data.providers.india_placeholders import (
+    AlphaVantageProvider,
+    BrokerMarketDataProvider,
+    MarketstackProvider,
+    NseBseProvider,
+    TwelveDataProvider,
+)
 from app.modules.market_data.providers.mock_provider import MockProvider, MockProviderIndia
 from app.modules.market_data.providers.polygon_provider import PolygonProvider
 from app.modules.market_data.schemas import (
@@ -17,6 +24,7 @@ from app.modules.market_data.schemas import (
     PriceHistoryResponse,
     PriceQuote,
 )
+from app.modules.market_data.symbols import normalize_market_symbol
 from app.modules.portfolios.service import PortfolioService
 
 
@@ -102,10 +110,22 @@ class MarketDataService:
     def _build_provider(self) -> MarketDataProvider:
         settings = get_settings()
         provider_name = settings.market_data_provider.strip().lower()
+        if provider_name in {"india", "indian"}:
+            provider_name = settings.indian_market_data_provider.strip().lower()
         if provider_name == "mock":
             return MockProvider()
         if provider_name == "mock_india":
             return MockProviderIndia()
+        if provider_name in {"twelve_data", "twelvedata"}:
+            return TwelveDataProvider(api_key=settings.twelve_data_api_key)
+        if provider_name in {"alpha_vantage", "alphavantage"}:
+            return AlphaVantageProvider(api_key=settings.alpha_vantage_api_key)
+        if provider_name == "marketstack":
+            return MarketstackProvider(api_key=settings.marketstack_api_key)
+        if provider_name in {"nse_bse", "nse", "bse", "truedata", "true_data"}:
+            return NseBseProvider(api_key=settings.market_data_api_key)
+        if provider_name in {"broker", "broker_provider"}:
+            return BrokerMarketDataProvider(api_key=settings.market_data_api_key)
         if provider_name in {"polygon", "massive"}:
             return PolygonProvider(api_key=settings.polygon_api_key or settings.market_data_api_key)
         if provider_name == "fmp":
@@ -149,10 +169,10 @@ class MarketDataService:
         return deduped_symbols
 
     def _normalize_symbol(self, symbol: str) -> str:
-        cleaned = symbol.strip().upper()
-        if not cleaned:
-            raise ValidationAppError("Symbol cannot be empty")
-        return cleaned
+        try:
+            return normalize_market_symbol(symbol).normalized_symbol
+        except ValueError as exc:
+            raise ValidationAppError("Symbol cannot be empty") from exc
 
     def _resolve_history_window(self, *, start: str | None, end: str | None) -> tuple[date, date]:
         try:

@@ -53,7 +53,7 @@ def client(tmp_path) -> Generator[TestClient, None, None]:
 def create_portfolio(client: TestClient) -> dict:
     response = client.post(
         "/api/portfolios",
-        json={"name": "Market Data Portfolio", "base_currency": "USD"},
+        json={"name": "Market Data Portfolio", "base_currency": "INR"},
     )
     assert response.status_code == 201
     return response.json()
@@ -67,7 +67,7 @@ def create_holding(client: TestClient, portfolio_id: str, symbol: str, current_p
             "quantity": 5,
             "average_cost": 100,
             "current_price": current_price,
-            "currency": "USD",
+            "currency": "INR",
         },
     )
     assert response.status_code == 201
@@ -107,12 +107,18 @@ def test_mock_india_provider_returns_inr_mock_prices() -> None:
     assert nifty.currency == "INR"
     assert nifty.source == "mock_india"
 
+    banknifty = provider.get_latest_price("BANK NIFTY")
+    assert banknifty.symbol == "BANKNIFTY"
+    assert banknifty.currency == "INR"
+    assert banknifty.source == "mock_india"
+
 
 def test_india_symbol_normalization_for_future_providers() -> None:
     assert normalize_india_symbol_for_provider("RELIANCE") == "RELIANCE.NS"
     assert normalize_india_symbol_for_provider("tcs") == "TCS.NS"
     assert normalize_india_symbol_for_provider("NIFTY50") == "^NSEI"
     assert normalize_india_symbol_for_provider("INFY.NS") == "INFY.NS"
+    assert normalize_india_symbol_for_provider("BANK NIFTY") == "^NSEBANK"
 
 
 def test_unknown_symbol_deterministic_price() -> None:
@@ -127,24 +133,25 @@ def test_unknown_symbol_deterministic_price() -> None:
 
 
 def test_price_api_endpoint_caches_asset_price(client: TestClient) -> None:
-    response = client.get("/api/market-data/prices?symbols=AAPL,MSFT")
+    response = client.get("/api/market-data/prices?symbols=RELIANCE,TCS")
 
     assert response.status_code == 200
     body = response.json()
-    assert [price["symbol"] for price in body["prices"]] == ["AAPL", "MSFT"]
-    assert body["prices"][0]["source"] == "mock"
+    assert [price["symbol"] for price in body["prices"]] == ["RELIANCE", "TCS"]
+    assert body["prices"][0]["source"] == "mock_india"
+    assert body["prices"][0]["currency"] == "INR"
     assert body["prices"][0]["is_realtime"] is False
 
     SessionLocal = client.app.state.testing_session_local
     with SessionLocal() as db:
         stored_prices = db.scalars(select(AssetPrice).order_by(AssetPrice.symbol)).all()
-        assert [price.symbol for price in stored_prices] == ["AAPL", "MSFT"]
+        assert [price.symbol for price in stored_prices] == ["RELIANCE", "TCS"]
 
 
 def test_portfolio_price_refresh_updates_holdings(client: TestClient) -> None:
     portfolio = create_portfolio(client)
-    aapl_holding = create_holding(client, portfolio["id"], "AAPL", current_price=1)
-    msft_holding = create_holding(client, portfolio["id"], "MSFT", current_price=2)
+    reliance_holding = create_holding(client, portfolio["id"], "RELIANCE", current_price=1)
+    tcs_holding = create_holding(client, portfolio["id"], "TCS", current_price=2)
 
     response = client.post(f"/api/portfolios/{portfolio['id']}/prices/refresh")
 
@@ -153,21 +160,21 @@ def test_portfolio_price_refresh_updates_holdings(client: TestClient) -> None:
     assert body["portfolio_id"] == portfolio["id"]
     assert body["refreshed_count"] == 2
     assert {price["symbol"]: price["price"] for price in body["prices"]} == {
-        "AAPL": 210.12,
-        "MSFT": 425.44,
+        "RELIANCE": 2842.15,
+        "TCS": 3925.8,
     }
     assert {holding["symbol"]: holding["current_price"] for holding in body["holdings"]} == {
-        "AAPL": 210.12,
-        "MSFT": 425.44,
+        "RELIANCE": 2842.15,
+        "TCS": 3925.8,
     }
 
     SessionLocal = client.app.state.testing_session_local
     with SessionLocal() as db:
         holdings = db.scalars(select(Holding).order_by(Holding.symbol)).all()
-        assert {holding.id for holding in holdings} == {aapl_holding["id"], msft_holding["id"]}
+        assert {holding.id for holding in holdings} == {reliance_holding["id"], tcs_holding["id"]}
         assert {holding.symbol: float(holding.current_price) for holding in holdings} == {
-            "AAPL": 210.12,
-            "MSFT": 425.44,
+            "RELIANCE": 2842.15,
+            "TCS": 3925.8,
         }
         stored_prices = db.scalars(select(AssetPrice).order_by(AssetPrice.symbol)).all()
-        assert [price.symbol for price in stored_prices] == ["AAPL", "MSFT"]
+        assert [price.symbol for price in stored_prices] == ["RELIANCE", "TCS"]

@@ -1,66 +1,11 @@
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.core.config import get_settings
 from app.db.models import Asset, AssetPrice, Holding, Portfolio, User
 from app.modules.demo.schemas import DemoSeedResponse
-from app.modules.market_data.providers.mock_provider import MockProvider, MockProviderIndia
+from app.modules.market_data.providers.mock_provider import MockProviderIndia
 
-DEMO_PORTFOLIO_NAME = "Demo Growth Portfolio"
 INDIA_DEMO_PORTFOLIO_NAME = "Demo India Portfolio"
-
-DEMO_HOLDINGS = [
-    {
-        "symbol": "AAPL",
-        "company_name": "Apple Inc.",
-        "quantity": 12,
-        "average_cost": 145.0,
-        "currency": "USD",
-        "sector": "Technology",
-        "asset_class": "Equity",
-        "exchange": "NASDAQ",
-    },
-    {
-        "symbol": "MSFT",
-        "company_name": "Microsoft Corporation",
-        "quantity": 8,
-        "average_cost": 310.0,
-        "currency": "USD",
-        "sector": "Technology",
-        "asset_class": "Equity",
-        "exchange": "NASDAQ",
-    },
-    {
-        "symbol": "NVDA",
-        "company_name": "NVIDIA Corporation",
-        "quantity": 18,
-        "average_cost": 88.0,
-        "currency": "USD",
-        "sector": "Technology",
-        "asset_class": "Equity",
-        "exchange": "NASDAQ",
-    },
-    {
-        "symbol": "SPY",
-        "company_name": "SPDR S&P 500 ETF Trust",
-        "quantity": 10,
-        "average_cost": 430.0,
-        "currency": "USD",
-        "sector": "ETF",
-        "asset_class": "Fund",
-        "exchange": "NYSEARCA",
-    },
-    {
-        "symbol": "TSLA",
-        "company_name": "Tesla Inc.",
-        "quantity": 6,
-        "average_cost": 210.0,
-        "currency": "USD",
-        "sector": "Consumer Discretionary",
-        "asset_class": "Equity",
-        "exchange": "NASDAQ",
-    },
-]
 
 INDIA_DEMO_HOLDINGS = [
     {
@@ -153,14 +98,23 @@ INDIA_DEMO_HOLDINGS = [
         "asset_class": "Equity",
         "exchange": "NSE",
     },
+    {
+        "symbol": "NIFTYBEES",
+        "company_name": "Nippon India ETF Nifty 50 BeES",
+        "quantity": 25,
+        "average_cost": 225.0,
+        "currency": "INR",
+        "sector": "ETF",
+        "asset_class": "ETF",
+        "exchange": "NSE",
+    },
 ]
 
 
 class DemoSeedService:
     def __init__(self, db: Session):
         self.db = db
-        self.provider_name = get_settings().market_data_provider.strip().lower()
-        self.provider = MockProviderIndia() if self.provider_name == "mock_india" else MockProvider()
+        self.provider = MockProviderIndia()
 
     def seed_for_user(self, *, user: User) -> DemoSeedResponse:
         portfolio = self._get_or_create_portfolio(user=user)
@@ -199,7 +153,7 @@ class DemoSeedService:
         )
 
     def _get_or_create_portfolio(self, *, user: User) -> Portfolio:
-        portfolio_name = INDIA_DEMO_PORTFOLIO_NAME if self.provider_name == "mock_india" else DEMO_PORTFOLIO_NAME
+        portfolio_name = INDIA_DEMO_PORTFOLIO_NAME
         portfolio = self.db.scalar(
             select(Portfolio).where(Portfolio.user_id == user.id, Portfolio.name == portfolio_name)
         )
@@ -209,16 +163,16 @@ class DemoSeedService:
         portfolio = Portfolio(
             user_id=user.id,
             name=portfolio_name,
-            base_currency="INR" if self.provider_name == "mock_india" else "USD",
-            benchmark_symbol="NIFTY50" if self.provider_name == "mock_india" else "SPY",
-            risk_free_rate=0.065 if self.provider_name == "mock_india" else 0.04,
+            base_currency="INR",
+            benchmark_symbol="NIFTY50",
+            risk_free_rate=0.065,
         )
         self.db.add(portfolio)
         self.db.flush()
         return portfolio
 
     def _demo_holdings(self) -> list[dict]:
-        return INDIA_DEMO_HOLDINGS if self.provider_name == "mock_india" else DEMO_HOLDINGS
+        return INDIA_DEMO_HOLDINGS
 
     def _get_or_create_holding(self, *, portfolio: Portfolio, row: dict) -> Holding:
         holding = self.db.scalar(

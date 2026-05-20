@@ -3,43 +3,10 @@ from hashlib import sha256
 
 from app.modules.market_data.providers.base import MarketDataProvider
 from app.modules.market_data.schemas import CompanyProfile, FxRate, PriceHistoryPoint, PriceQuote
+from app.modules.market_data.symbols import normalize_india_symbol_for_provider, normalize_market_symbol
 
 
 MOCK_AS_OF = datetime(2026, 1, 1, tzinfo=UTC)
-
-INDIA_EQUITY_PROVIDER_SYMBOLS = {
-    "RELIANCE": "RELIANCE.NS",
-    "TCS": "TCS.NS",
-    "INFY": "INFY.NS",
-    "HDFCBANK": "HDFCBANK.NS",
-    "ICICIBANK": "ICICIBANK.NS",
-    "SBIN": "SBIN.NS",
-    "ITC": "ITC.NS",
-    "LT": "LT.NS",
-    "BHARTIARTL": "BHARTIARTL.NS",
-}
-INDIA_INDEX_PROVIDER_SYMBOLS = {
-    "NIFTY50": "^NSEI",
-    "NIFTY 50": "^NSEI",
-}
-INDIA_PROVIDER_TO_DEMO_SYMBOL = {
-    **{provider_symbol: symbol for symbol, provider_symbol in INDIA_EQUITY_PROVIDER_SYMBOLS.items()},
-    "^NSEI": "NIFTY50",
-}
-
-
-def normalize_india_symbol_for_provider(symbol: str) -> str:
-    cleaned = symbol.strip().upper()
-    if not cleaned:
-        raise ValueError("Symbol cannot be empty")
-    if cleaned in INDIA_INDEX_PROVIDER_SYMBOLS:
-        return INDIA_INDEX_PROVIDER_SYMBOLS[cleaned]
-    if cleaned in INDIA_EQUITY_PROVIDER_SYMBOLS:
-        return INDIA_EQUITY_PROVIDER_SYMBOLS[cleaned]
-    if cleaned.endswith(".NS") or cleaned.startswith("^"):
-        return cleaned
-    return f"{cleaned}.NS"
-
 
 class MockProvider(MarketDataProvider):
     source = "mock"
@@ -165,7 +132,14 @@ class MockProviderIndia(MockProvider):
         "ITC.NS": 438.7,
         "LT.NS": 3560.1,
         "BHARTIARTL.NS": 1216.9,
+        "KOTAKBANK.NS": 1712.45,
+        "AXISBANK.NS": 1084.6,
+        "MARUTI.NS": 11825.25,
+        "SUNPHARMA.NS": 1512.3,
+        "NIFTYBEES.NS": 246.55,
         "^NSEI": 22530.7,
+        "^NSEBANK": 48075.2,
+        "BSE:500325": 2840.4,
     }
     company_profiles: dict[str, dict[str, str]] = {
         "RELIANCE.NS": {"company_name": "Reliance Industries Ltd.", "sector": "Energy"},
@@ -177,20 +151,27 @@ class MockProviderIndia(MockProvider):
         "ITC.NS": {"company_name": "ITC Ltd.", "sector": "Consumer Staples"},
         "LT.NS": {"company_name": "Larsen & Toubro Ltd.", "sector": "Industrials"},
         "BHARTIARTL.NS": {"company_name": "Bharti Airtel Ltd.", "sector": "Communication Services"},
+        "KOTAKBANK.NS": {"company_name": "Kotak Mahindra Bank Ltd.", "sector": "Financials"},
+        "AXISBANK.NS": {"company_name": "Axis Bank Ltd.", "sector": "Financials"},
+        "MARUTI.NS": {"company_name": "Maruti Suzuki India Ltd.", "sector": "Consumer Discretionary"},
+        "SUNPHARMA.NS": {"company_name": "Sun Pharmaceutical Industries Ltd.", "sector": "Healthcare"},
+        "NIFTYBEES.NS": {"company_name": "Nippon India ETF Nifty 50 BeES", "sector": "ETF"},
         "^NSEI": {"company_name": "NIFTY 50 Index", "sector": "Benchmark"},
+        "^NSEBANK": {"company_name": "NIFTY Bank Index", "sector": "Benchmark"},
     }
 
     def get_company_profile(self, symbol: str) -> CompanyProfile:
         normalized_symbol = self._normalize_symbol(symbol)
-        provider_symbol = normalize_india_symbol_for_provider(normalized_symbol)
+        symbol_metadata = normalize_market_symbol(normalized_symbol)
+        provider_symbol = symbol_metadata.provider_symbol
         profile = self.company_profiles.get(provider_symbol)
         return CompanyProfile(
             symbol=normalized_symbol,
             company_name=profile["company_name"] if profile else f"{normalized_symbol} Mock India Company",
             currency=self.currency,
             sector=profile["sector"] if profile else "Unknown",
-            asset_class="index" if provider_symbol == "^NSEI" else "equity",
-            exchange="NSE",
+            asset_class=symbol_metadata.asset_class,
+            exchange=symbol_metadata.exchange,
             source=self.source,
         )
 
@@ -203,7 +184,4 @@ class MockProviderIndia(MockProvider):
         return round(paise / 100, 2)
 
     def _normalize_symbol(self, symbol: str) -> str:
-        cleaned = symbol.strip().upper()
-        if not cleaned:
-            raise ValueError("Symbol cannot be empty")
-        return INDIA_PROVIDER_TO_DEMO_SYMBOL.get(cleaned, cleaned)
+        return normalize_market_symbol(symbol).normalized_symbol
