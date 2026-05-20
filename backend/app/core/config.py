@@ -36,6 +36,19 @@ class Settings(BaseSettings):
     )
     sentry_dsn: str | None = None
 
+    enable_market_overview: bool = False
+    enable_dashboard_bundle: bool = False
+    enable_upload_suggestions: bool = False
+    enable_historical_data: bool = False
+    enable_performance_history: bool = False
+    enable_risk_v2: bool = False
+    enable_snapshots: bool = False
+    enable_fundamentals: bool = False
+    enable_peers: bool = False
+    enable_simulator: bool = False
+    enable_optimizer: bool = False
+    enable_rebalance_tickets: bool = False
+
     cors_origins: str = Field(
         default="http://localhost:5173,http://127.0.0.1:5173",
         description="Comma-separated allowed CORS origins",
@@ -118,6 +131,24 @@ class Settings(BaseSettings):
                     "Production mock AI override is enabled; use this only for explicit test/demo deployments."
                 )
         return warnings
+
+    @computed_field
+    @property
+    def feature_flags(self) -> dict[str, bool]:
+        return {
+            "ENABLE_MARKET_OVERVIEW": self.enable_market_overview,
+            "ENABLE_DASHBOARD_BUNDLE": self.enable_dashboard_bundle,
+            "ENABLE_UPLOAD_SUGGESTIONS": self.enable_upload_suggestions,
+            "ENABLE_HISTORICAL_DATA": self.enable_historical_data,
+            "ENABLE_PERFORMANCE_HISTORY": self.enable_performance_history,
+            "ENABLE_RISK_V2": self.enable_risk_v2,
+            "ENABLE_SNAPSHOTS": self.enable_snapshots,
+            "ENABLE_FUNDAMENTALS": self.enable_fundamentals,
+            "ENABLE_PEERS": self.enable_peers,
+            "ENABLE_SIMULATOR": self.enable_simulator,
+            "ENABLE_OPTIMIZER": self.enable_optimizer,
+            "ENABLE_REBALANCE_TICKETS": self.enable_rebalance_tickets,
+        }
 
 
 @lru_cache
