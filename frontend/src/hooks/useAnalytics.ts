@@ -11,9 +11,9 @@ import {
 
 export const analyticsQueryKey = (portfolioId: string | null | undefined) => ["analytics", portfolioId] as const;
 
-export function useAnalytics(portfolioId: string | null | undefined) {
+export function useAnalytics(portfolioId: string | null | undefined, options: { enabled?: boolean } = {}) {
   const queryClient = useQueryClient();
-  const enabled = Boolean(portfolioId);
+  const enabled = Boolean(portfolioId) && (options.enabled ?? true);
   const queryKey = analyticsQueryKey(portfolioId);
 
   const summary = useQuery({
