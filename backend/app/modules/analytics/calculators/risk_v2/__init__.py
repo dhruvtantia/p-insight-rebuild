@@ -1,0 +1,1 @@
+"""Isolated risk calculator utilities."""
