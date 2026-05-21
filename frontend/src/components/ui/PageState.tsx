@@ -1,4 +1,4 @@
-import { AlertTriangle, Inbox, Loader2 } from "lucide-react";
+import { AlertTriangle, Inbox, Loader2, Lock } from "lucide-react";
 
 import { Card } from "./Card";
 
@@ -33,6 +33,22 @@ export function ErrorState({ title = "Something went wrong", detail }: { title?:
         <div>
           <h3 className="text-sm font-semibold text-coral">{title}</h3>
           <p className="mt-1 text-sm text-coral/80">{detail ?? "The request could not be completed."}</p>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+export function FeatureDisabledState({ feature, detail }: { feature: string; detail?: string }) {
+  return (
+    <Card className="border-dashed bg-white">
+      <div className="flex items-start gap-3">
+        <Lock className="mt-0.5 text-slate-400" size={20} />
+        <div>
+          <h3 className="text-sm font-semibold text-ink">{feature} is not enabled</h3>
+          <p className="mt-1 text-sm text-slate-600">
+            {detail ?? "This module is available behind a backend feature flag and is not active in this environment."}
+          </p>
         </div>
       </div>
     </Card>

@@ -5,7 +5,7 @@ import { Sidebar } from "./Sidebar";
 import { useAppStatus } from "../../hooks/useAppStatus";
 import { DemoDataBanner } from "../ui";
 
-const demoDataWarningPaths = new Set(["/dashboard", "/holdings", "/analytics", "/advisor", "/watchlist"]);
+const demoDataWarningPaths = new Set(["/market", "/dashboard", "/holdings", "/analytics", "/advisor", "/watchlist"]);
 const mockMarketDataProviders = new Set(["mock", "mock_india"]);
 
 export function AppLayout() {

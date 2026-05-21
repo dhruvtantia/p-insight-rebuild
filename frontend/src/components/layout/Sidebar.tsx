@@ -6,6 +6,7 @@ import {
   FileUp,
   Gauge,
   Home,
+  Landmark,
   LineChart,
   ListChecks,
   Lock,
@@ -20,6 +21,7 @@ import { cn } from "../../lib/cn";
 const navItems = [
   { to: "/", label: "Landing", icon: Home },
   { to: "/onboarding", label: "Onboarding", icon: ListChecks },
+  { to: "/market", label: "Market", icon: Landmark },
   { to: "/dashboard", label: "Dashboard", icon: Gauge },
   { to: "/holdings", label: "Holdings", icon: BarChart3 },
   { to: "/upload", label: "Upload", icon: FileUp },

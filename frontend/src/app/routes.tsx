@@ -10,6 +10,7 @@ import { DashboardPage } from "../pages/DashboardPage";
 import { HoldingsPage } from "../pages/HoldingsPage";
 import { LandingPage } from "../pages/LandingPage";
 import { LoginPage, SignupPage } from "../pages/AuthPages";
+import { MarketPage } from "../pages/MarketPage";
 import { OnboardingPage } from "../pages/OnboardingPage";
 import { SettingsPage } from "../pages/SettingsPage";
 import { UploadPage } from "../pages/UploadPage";
@@ -24,6 +25,7 @@ export const router = createBrowserRouter([
       { path: "login", element: <LoginPage /> },
       { path: "signup", element: <SignupPage /> },
       { path: "onboarding", element: <OnboardingPage /> },
+      { path: "market", element: <MarketPage /> },
       { path: "dashboard", element: <DashboardPage /> },
       { path: "holdings", element: <HoldingsPage /> },
       { path: "upload", element: <UploadPage /> },
