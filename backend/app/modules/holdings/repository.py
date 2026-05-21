@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -9,8 +11,20 @@ class HoldingRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def create(self, *, portfolio: Portfolio, data: HoldingCreate) -> Holding:
-        holding = Holding(portfolio_id=portfolio.id, **data.model_dump())
+    def create(
+        self,
+        *,
+        portfolio: Portfolio,
+        data: HoldingCreate,
+        sector_source: str | None = None,
+        sector_updated_at: datetime | None = None,
+    ) -> Holding:
+        holding = Holding(
+            portfolio_id=portfolio.id,
+            **data.model_dump(),
+            sector_source=sector_source,
+            sector_updated_at=sector_updated_at,
+        )
         self.db.add(holding)
         self.db.commit()
         self.db.refresh(holding)

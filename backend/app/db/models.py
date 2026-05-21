@@ -85,6 +85,8 @@ class Holding(TimestampMixin, Base):
     current_price: Mapped[float | None] = mapped_column(Numeric(18, 6), nullable=True)
     currency: Mapped[str] = mapped_column(String(3), default="INR", nullable=False)
     sector: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    sector_source: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    sector_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     asset_class: Mapped[str | None] = mapped_column(String(80), nullable=True)
     exchange: Mapped[str | None] = mapped_column(String(80), nullable=True)
 

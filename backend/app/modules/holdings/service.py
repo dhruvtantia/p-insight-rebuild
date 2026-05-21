@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from app.db.models import Holding, User
+from app.db.models import Holding, User, utc_now
 from app.modules.holdings.errors import HoldingNotFoundError
 from app.modules.holdings.repository import HoldingRepository
 from app.modules.holdings.schemas import HoldingCreate, HoldingUpdate
@@ -23,7 +23,13 @@ class HoldingService:
                 "asset_class": data.asset_class or symbol_metadata.asset_class,
             }
         )
-        return self.repository.create(portfolio=portfolio, data=normalized_data)
+        sector_timestamp = utc_now() if normalized_data.sector else None
+        return self.repository.create(
+            portfolio=portfolio,
+            data=normalized_data,
+            sector_source="manual" if normalized_data.sector else None,
+            sector_updated_at=sector_timestamp,
+        )
 
     def list_holdings(self, *, portfolio_id: str, user: User) -> list[Holding]:
         portfolio = self.portfolio_service.get_portfolio(portfolio_id=portfolio_id, user=user)
@@ -45,17 +51,22 @@ class HoldingService:
         data: HoldingUpdate,
     ) -> Holding:
         holding = self.get_holding(portfolio_id=portfolio_id, holding_id=holding_id, user=user)
+        sector_was_updated = "sector" in data.model_fields_set
         if data.symbol is None:
-            return self.repository.update(holding=holding, data=data)
+            normalized_data = data
+        else:
+            symbol_metadata = normalize_market_symbol(data.symbol)
+            normalized_data = data.model_copy(
+                update={
+                    "symbol": symbol_metadata.normalized_symbol,
+                    "exchange": data.exchange or symbol_metadata.exchange,
+                    "asset_class": data.asset_class or symbol_metadata.asset_class,
+                }
+            )
 
-        symbol_metadata = normalize_market_symbol(data.symbol)
-        normalized_data = data.model_copy(
-            update={
-                "symbol": symbol_metadata.normalized_symbol,
-                "exchange": data.exchange or symbol_metadata.exchange,
-                "asset_class": data.asset_class or symbol_metadata.asset_class,
-            }
-        )
+        if sector_was_updated:
+            holding.sector_source = "manual" if normalized_data.sector else None
+            holding.sector_updated_at = utc_now() if normalized_data.sector else None
         return self.repository.update(holding=holding, data=normalized_data)
 
     def delete_holding(self, *, portfolio_id: str, holding_id: str, user: User) -> None:

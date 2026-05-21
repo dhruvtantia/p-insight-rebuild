@@ -65,6 +65,8 @@ class HoldingResponse(BaseModel):
     current_price: float | None
     currency: str
     sector: str | None
+    sector_source: str | None = None
+    sector_updated_at: datetime | None = None
     asset_class: str | None
     exchange: str | None
     created_at: datetime

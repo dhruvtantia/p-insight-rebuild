@@ -162,6 +162,9 @@ def test_create_holding(client: TestClient) -> None:
     assert holding["quantity"] == 10
     assert holding["market_value"] == 1250
     assert holding["unrealized_gain_loss"] == 250
+    assert holding["sector"] == "Technology"
+    assert holding["sector_source"] == "manual"
+    assert holding["sector_updated_at"]
 
 
 def test_create_indian_holding_normalizes_symbol_defaults(client: TestClient) -> None:
@@ -180,6 +183,26 @@ def test_create_indian_holding_normalizes_symbol_defaults(client: TestClient) ->
     assert holding["currency"] == "INR"
     assert holding["exchange"] == "NSE"
     assert holding["asset_class"] == "Equity"
+    assert holding["sector"] is None
+    assert holding["sector_source"] is None
+    assert holding["sector_updated_at"] is None
+
+
+def test_holding_without_sector_still_serializes_sector_metadata(client: TestClient) -> None:
+    portfolio = create_portfolio(client)
+
+    response = client.post(
+        f"/api/portfolios/{portfolio['id']}/holdings",
+        json={"symbol": "AAPL", "quantity": 10, "average_cost": 100},
+    )
+
+    assert response.status_code == 201
+    holding = response.json()
+    assert "sector_source" in holding
+    assert "sector_updated_at" in holding
+    assert holding["sector"] is None
+    assert holding["sector_source"] is None
+    assert holding["sector_updated_at"] is None
 
 
 def test_list_holdings(client: TestClient) -> None:
@@ -207,6 +230,22 @@ def test_update_holding(client: TestClient) -> None:
     assert response.json()["current_price"] == 150
     assert response.json()["market_value"] == 600
     assert response.json()["unrealized_gain_loss"] == 200
+
+
+def test_manual_sector_update_marks_sector_source_manual(client: TestClient) -> None:
+    portfolio = create_portfolio(client)
+    holding = create_holding(client, portfolio["id"])
+
+    response = client.patch(
+        f"/api/portfolios/{portfolio['id']}/holdings/{holding['id']}",
+        json={"sector": "Consumer Technology"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["sector"] == "Consumer Technology"
+    assert body["sector_source"] == "manual"
+    assert body["sector_updated_at"]
 
 
 def test_delete_holding(client: TestClient) -> None:

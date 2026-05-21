@@ -227,6 +227,9 @@ def test_confirm_import_creates_holdings(client: TestClient) -> None:
     assert holdings.status_code == 200
     assert holdings.json()[0]["symbol"] == "AAPL"
     assert holdings.json()[0]["current_price"] == 125
+    assert holdings.json()[0]["sector"] == "Technology"
+    assert holdings.json()[0]["sector_source"] == "upload"
+    assert holdings.json()[0]["sector_updated_at"]
 
 
 def test_indian_csv_upload_normalizes_symbols_and_keeps_inr(client: TestClient) -> None:
