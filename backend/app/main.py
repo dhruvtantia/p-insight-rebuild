@@ -20,6 +20,7 @@ from app.modules.optimizer.router import router as optimizer_router
 from app.modules.performance.router import router as performance_router
 from app.modules.peers.router import router as peers_router
 from app.modules.portfolios.router import router as portfolios_router
+from app.modules.rebalance.router import router as rebalance_router
 from app.modules.risk.router import router as risk_router
 from app.modules.simulator.router import router as simulator_router
 from app.modules.snapshots.router import router as snapshots_router
@@ -53,6 +54,7 @@ def create_app() -> FastAPI:
     app.include_router(risk_router)
     app.include_router(simulator_router)
     app.include_router(optimizer_router)
+    app.include_router(rebalance_router)
     app.include_router(snapshots_router)
     app.include_router(dashboard_router)
     app.include_router(ai_portfolio_router)
