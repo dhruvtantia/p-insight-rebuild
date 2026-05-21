@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.json import safe_json_dict, safe_json_list
-from app.db.models import Holding, Portfolio, UploadJob, UploadRow
+from app.db.models import Holding, Portfolio, UploadJob, UploadRow, utc_now
 
 
 class UploadRepository:
@@ -114,6 +114,8 @@ class UploadRepository:
                 current_price=row.get("current_price"),
                 currency=row["currency"],
                 sector=row.get("sector"),
+                sector_source="upload" if row.get("sector") else None,
+                sector_updated_at=utc_now() if row.get("sector") else None,
                 asset_class=row.get("asset_class"),
                 exchange=row.get("exchange"),
             )
