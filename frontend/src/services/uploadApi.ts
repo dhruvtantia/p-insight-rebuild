@@ -2,6 +2,7 @@ import { apiRequest } from "./apiClient";
 import type {
   ColumnMapping,
   ColumnMappingResponse,
+  ColumnMappingSuggestionsResponse,
   ConfirmUploadResponse,
   UploadErrorsResponse,
   UploadJob,
@@ -29,6 +30,10 @@ export function submitColumnMapping(uploadJobId: string, mapping: ColumnMapping)
   });
 }
 
+export function getMappingSuggestions(uploadJobId: string) {
+  return apiRequest<ColumnMappingSuggestionsResponse>(`/api/uploads/${uploadJobId}/mapping-suggestions`);
+}
+
 export function validateUpload(uploadJobId: string) {
   return apiRequest<ValidateUploadResponse>(`/api/uploads/${uploadJobId}/validate`, {
     method: "POST"
@@ -49,6 +54,7 @@ export const uploadApi = {
   createUploadJob,
   getUploadJob,
   submitColumnMapping,
+  getMappingSuggestions,
   validateUpload,
   confirmUpload,
   getUploadErrors

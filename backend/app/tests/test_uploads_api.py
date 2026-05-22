@@ -1,5 +1,6 @@
 import io
 from collections.abc import Generator
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -13,6 +14,9 @@ from app.db.base import Base
 from app.db.session import get_db
 from app.main import create_app
 from app.modules.uploads.repository import job_mapping, row_errors, row_mapped_data, row_raw_data
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+DEMO_PORTFOLIO_CSV = REPO_ROOT / "docs" / "demo-data" / "pinsight_demo_india_portfolio_mock.csv"
 
 
 @pytest.fixture()
@@ -60,6 +64,15 @@ def upload_csv(client: TestClient, portfolio_id: str, content: str) -> dict:
     response = client.post(
         f"/api/portfolios/{portfolio_id}/uploads",
         files={"file": ("holdings.csv", content.encode("utf-8"), "text/csv")},
+    )
+    assert response.status_code == 201
+    return response.json()
+
+
+def upload_csv_bytes(client: TestClient, portfolio_id: str, filename: str, content: bytes) -> dict:
+    response = client.post(
+        f"/api/portfolios/{portfolio_id}/uploads",
+        files={"file": (filename, content, "text/csv")},
     )
     assert response.status_code == 201
     return response.json()
@@ -258,6 +271,54 @@ def test_indian_csv_upload_normalizes_symbols_and_keeps_inr(client: TestClient) 
     assert sorted(holding["symbol"] for holding in holdings) == ["500325", "RELIANCE"]
     assert {holding["currency"] for holding in holdings} == {"INR"}
     assert {holding["exchange"] for holding in holdings} == {"NSE", "BSE"}
+
+
+def test_demo_india_portfolio_csv_imports_with_existing_upload_flow(client: TestClient) -> None:
+    response = client.post(
+        "/api/portfolios",
+        json={"name": "India Demo Upload Portfolio", "base_currency": "INR", "benchmark_symbol": "NIFTY 50"},
+    )
+    assert response.status_code == 201
+    portfolio = response.json()
+
+    upload = upload_csv_bytes(
+        client,
+        portfolio["id"],
+        DEMO_PORTFOLIO_CSV.name,
+        DEMO_PORTFOLIO_CSV.read_bytes(),
+    )
+    assert upload["status"] == "uploaded"
+    assert upload["total_rows"] == 14
+    assert upload["detected_columns"] == [
+        "Ticker",
+        "Name",
+        "Shares",
+        "Average Cost",
+        "Current Price",
+        "Market Value",
+        "Currency",
+        "Sector",
+        "Asset Class",
+        "Exchange",
+    ]
+
+    apply_mapping(client, upload["id"])
+    validation = validate_upload(client, upload["id"])
+    confirm = confirm_upload(client, upload["id"])
+    holdings = client.get(f"/api/portfolios/{portfolio['id']}/holdings").json()
+    holdings_by_symbol = {holding["symbol"]: holding for holding in holdings}
+
+    assert validation["upload_job"]["valid_rows"] == 14
+    assert validation["upload_job"]["invalid_rows"] == 0
+    assert confirm["status"] == "imported"
+    assert confirm["imported_count"] == 14
+    assert len(holdings) == 14
+    assert {holding["currency"] for holding in holdings} == {"INR"}
+    assert {holding["exchange"] for holding in holdings} == {"NSE"}
+    assert holdings_by_symbol["GOLDBEES"]["asset_class"] == "Commodity ETF"
+    assert holdings_by_symbol["SILVERBEES"]["asset_class"] == "Commodity ETF"
+    assert holdings_by_symbol["GOLDBEES"]["current_price"] == 61
+    assert holdings_by_symbol["SILVERBEES"]["current_price"] == 82
 
 
 def test_isin_like_symbol_returns_validation_warning(client: TestClient) -> None:

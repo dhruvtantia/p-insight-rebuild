@@ -1,0 +1,15 @@
+﻿Ticker,Name,Shares,Average Cost,Current Price,Market Value,Currency,Sector,Asset Class,Exchange
+RELIANCE,Reliance Industries Ltd,18,2420.0,2865.0,51570.0,INR,Energy,Equity,NSE
+TCS,Tata Consultancy Services Ltd,10,3180.0,3925.0,39250.0,INR,Information Technology,Equity,NSE
+HDFCBANK,HDFC Bank Ltd,30,1485.0,1668.0,50040.0,INR,Financial Services,Equity,NSE
+ICICIBANK,ICICI Bank Ltd,40,925.0,1124.0,44960.0,INR,Financial Services,Equity,NSE
+INFY,Infosys Ltd,22,1325.0,1548.0,34056.0,INR,Information Technology,Equity,NSE
+LT,Larsen & Toubro Ltd,12,2810.0,3565.0,42780.0,INR,Industrials,Equity,NSE
+SBIN,State Bank of India,55,575.0,775.0,42625.0,INR,Financial Services,Equity,NSE
+BHARTIARTL,Bharti Airtel Ltd,24,845.0,1245.0,29880.0,INR,Telecom,Equity,NSE
+ITC,ITC Ltd,80,335.0,455.0,36400.0,INR,FMCG,Equity,NSE
+MARUTI,Maruti Suzuki India Ltd,4,8750.0,11840.0,47360.0,INR,Automobile,Equity,NSE
+NIFTYBEES,Nippon India ETF Nifty 50 BeES,120,205.0,252.0,30240.0,INR,Index ETF,ETF,NSE
+BANKBEES,Nippon India ETF Bank BeES,70,410.0,485.0,33950.0,INR,Banking ETF,ETF,NSE
+GOLDBEES,Nippon India ETF Gold BeES,95,48.0,61.0,5795.0,INR,Commodities,Commodity ETF,NSE
+SILVERBEES,Nippon India ETF Silver BeES,60,65.0,82.0,4920.0,INR,Commodities,Commodity ETF,NSE

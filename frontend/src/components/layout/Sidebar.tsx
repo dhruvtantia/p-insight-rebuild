@@ -5,14 +5,19 @@ import {
   CreditCard,
   FileUp,
   Gauge,
+  GitCompareArrows,
   Home,
   Landmark,
   LineChart,
   ListChecks,
   Lock,
+  SearchCheck,
   Settings,
   Shield,
-  Star
+  SlidersHorizontal,
+  Sparkles,
+  Star,
+  UsersRound
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
@@ -23,10 +28,15 @@ const navItems = [
   { to: "/onboarding", label: "Onboarding", icon: ListChecks },
   { to: "/market", label: "Market", icon: Landmark },
   { to: "/dashboard", label: "Dashboard", icon: Gauge },
+  { to: "/changes", label: "Changes", icon: GitCompareArrows },
   { to: "/holdings", label: "Holdings", icon: BarChart3 },
   { to: "/upload", label: "Upload", icon: FileUp },
   { to: "/analytics", label: "Analytics", icon: LineChart },
+  { to: "/fundamentals", label: "Fundamentals", icon: SearchCheck },
+  { to: "/peers", label: "Peers", icon: UsersRound },
   { to: "/advisor", label: "AI Advisor", icon: Bot },
+  { to: "/simulate", label: "Simulate", icon: SlidersHorizontal },
+  { to: "/optimize", label: "Optimize", icon: Sparkles },
   { to: "/watchlist", label: "Watchlist", icon: Star },
   { to: "/brokers", label: "Brokers", icon: Building2 },
   { to: "/billing", label: "Billing", icon: CreditCard },
@@ -34,9 +44,16 @@ const navItems = [
   { to: "/admin", label: "Admin", icon: Shield }
 ];
 
-export function Sidebar() {
+type SidebarProps = {
+  width?: number;
+};
+
+export function Sidebar({ width }: SidebarProps) {
   return (
-    <aside className="hidden min-h-screen w-64 shrink-0 border-r border-line bg-white px-4 py-5 lg:block">
+    <aside
+      className="hidden min-h-screen shrink-0 border-r border-line bg-white px-4 py-5 lg:block"
+      style={width ? { width, flexBasis: width } : undefined}
+    >
       <div className="mb-6">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">P-insight</p>
         <h1 className="mt-1 text-xl font-semibold text-ink">Portfolio OS</h1>

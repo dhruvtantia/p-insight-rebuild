@@ -1,29 +1,33 @@
-import { Bot, Clock, MessageSquare, Plus, Send, Sparkles, Upload } from "lucide-react";
+import { AlertTriangle, Bot, Clock, Info, MessageSquare, Plus, Send, Sparkles, Upload } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
-import { Badge, Button, Card, CardTitle, EmptyState, ErrorState, LoadingState } from "../components/ui";
+import { Badge, Button, Card, CardTitle, DataStatusBadge, EmptyState, ErrorState, LoadingState } from "../components/ui";
 import { useAIAdvisor } from "../hooks/useAIAdvisor";
 import { useAnalytics } from "../hooks/useAnalytics";
 import { useAppStatus } from "../hooks/useAppStatus";
 import { usePortfolios } from "../hooks/usePortfolios";
-import type { AIAdvisorResponse, AIMessageResponse } from "../types/ai";
+import type { AIAdvisorContext, AIAdvisorResponse, AIAdvisorStructuredResponse, AIMessageResponse } from "../types/ai";
 import type { Portfolio } from "../types/portfolio";
 
 const SUGGESTED_QUESTIONS = [
   "Summarize my portfolio",
   "Where is my portfolio concentrated?",
-  "What are my biggest risks?",
-  "Explain my Sharpe ratio",
-  "What data is missing?",
-  "What changed since my last upload?"
+  "How diversified is this portfolio?",
+  "Which risk metrics should I review?",
+  "What fundamentals coverage is missing?",
+  "How do peers affect this context?",
+  "What changed across snapshots?"
 ];
 
 type ChatMessage = {
   role: "user" | "assistant";
   content: string;
   provider?: string | null;
+  model?: string | null;
   created_at?: string;
+  structuredResponse?: AIAdvisorStructuredResponse | null;
+  context?: AIAdvisorContext;
 };
 
 export function AIAdvisorPage() {
@@ -50,6 +54,9 @@ export function AIAdvisorPage() {
     .filter((message) => message.role === "user" || message.role === "assistant")
     .map(toChatMessage);
   const visibleMessages = historyMessages?.length ? historyMessages : sessionMessages;
+  const advisorContext =
+    advisor.selectedConversation.data?.context ??
+    [...sessionMessages].reverse().find((message) => message.role === "assistant")?.context;
 
   if (portfolios.isLoading) {
     return <LoadingState label="Loading portfolios" />;
@@ -144,6 +151,7 @@ export function AIAdvisorPage() {
           <ChatPanel
             messages={visibleMessages}
             aiProviderMode={appStatus.data?.ai_provider_mode}
+            advisorContext={advisorContext}
             isLoading={advisor.generateSummary.isPending || advisor.askQuestion.isPending}
             question={question}
             onQuestionChange={setQuestion}
@@ -154,6 +162,7 @@ export function AIAdvisorPage() {
         </main>
 
         <aside className="space-y-4">
+          <BackendContextPanel context={advisorContext} />
           <SuggestedQuestions
             questions={SUGGESTED_QUESTIONS}
             onSelect={handleSuggestedQuestion}
@@ -263,6 +272,7 @@ function ContextPanel({
 function ChatPanel({
   messages,
   aiProviderMode,
+  advisorContext,
   isLoading,
   question,
   onQuestionChange,
@@ -272,6 +282,7 @@ function ChatPanel({
 }: {
   messages: ChatMessage[];
   aiProviderMode?: string;
+  advisorContext?: AIAdvisorContext;
   isLoading: boolean;
   question: string;
   onQuestionChange: (value: string) => void;
@@ -309,6 +320,7 @@ function ChatPanel({
             key={`${message.role}-${index}-${message.created_at ?? ""}`}
             message={message}
             aiProviderMode={aiProviderMode}
+            advisorContext={message.context ?? advisorContext}
           />
         ))}
         {isLoading ? (
@@ -321,7 +333,7 @@ function ChatPanel({
       <form className="mt-4 grid gap-3 md:grid-cols-[1fr_auto]" onSubmit={onSubmit}>
         <textarea
           className="min-h-24 w-full resize-y rounded-md border border-line bg-white px-3 py-2 text-sm outline-none transition placeholder:text-slate-400 focus:border-accent focus:ring-2 focus:ring-accent/15"
-          placeholder="Ask about concentration, missing data, performance, or risk..."
+          placeholder="Ask about concentration, missing data, performance, risk, fundamentals, peers, or changes..."
           value={question}
           onChange={(event) => onQuestionChange(event.target.value)}
         />
@@ -432,25 +444,231 @@ function EmptyHoldingsCta() {
   );
 }
 
-function ChatBubble({ message, aiProviderMode }: { message: ChatMessage; aiProviderMode?: string }) {
+function BackendContextPanel({ context }: { context?: AIAdvisorContext }) {
+  if (!context) {
+    return <EmptyState title="Backend context" detail="Generate a summary or ask a question to inspect the backend context used for the answer." />;
+  }
+
+  const optionalContext = context.optional_context ?? {};
+  const optionalBlocks = [
+    optionalContext.dashboard_summary ? "Dashboard" : null,
+    optionalContext.performance_history_summary ? "Performance" : null,
+    optionalContext.risk_v2_summary ? "Risk" : null,
+    optionalContext.fundamentals_summary ? "Fundamentals" : null,
+    optionalContext.peer_summary ? "Peers" : null,
+    optionalContext.snapshot_change_summary ? "Changes" : null
+  ].filter((value): value is string => Boolean(value));
+  const summary = context.portfolio_summary;
+  const priceFreshness = context.price_freshness;
+
+  return (
+    <Card>
+      <CardTitle>Backend context</CardTitle>
+      <div className="mt-4 grid gap-3">
+        <ContextMetric label="Portfolio" value={summary?.name ?? "N/A"} />
+        <ContextMetric label="Holdings" value={String(summary?.holdings_count ?? context.holdings?.length ?? 0)} />
+        <ContextMetric label="Latest price source" value={priceFreshness?.latest_price_source ?? "N/A"} />
+        <ContextMetric
+          label="Missing prices"
+          value={priceFreshness?.missing_price_symbols?.length ? priceFreshness.missing_price_symbols.join(", ") : "None"}
+        />
+        <div>
+          <p className="text-xs font-medium uppercase tracking-[0.12em] text-slate-500">Optional context</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {optionalBlocks.length ? optionalBlocks.map((block) => <Badge key={block}>{block}</Badge>) : <Badge tone="neutral">Core only</Badge>}
+          </div>
+        </div>
+        {optionalContext.performance_history_summary?.data_status ? (
+          <div>
+            <p className="mb-2 text-xs font-medium uppercase tracking-[0.12em] text-slate-500">Performance status</p>
+            <DataStatusBadge status={optionalContext.performance_history_summary.data_status} />
+          </div>
+        ) : null}
+        {optionalContext.fundamentals_summary?.data_status ? (
+          <div>
+            <p className="mb-2 text-xs font-medium uppercase tracking-[0.12em] text-slate-500">Fundamentals status</p>
+            <DataStatusBadge status={optionalContext.fundamentals_summary.data_status} />
+          </div>
+        ) : null}
+      </div>
+    </Card>
+  );
+}
+
+function ChatBubble({
+  message,
+  aiProviderMode,
+  advisorContext
+}: {
+  message: ChatMessage;
+  aiProviderMode?: string;
+  advisorContext?: AIAdvisorContext;
+}) {
   const isUser = message.role === "user";
   const isMockAiResponse =
     !isUser && (message.provider?.trim().toLowerCase() === "mock" || aiProviderMode?.trim().toLowerCase() === "mock");
+  const structuredResponse =
+    !isUser && message.structuredResponse
+      ? message.structuredResponse
+      : !isUser
+        ? buildStructuredResponse(message, advisorContext)
+        : null;
   return (
     <div className={isUser ? "self-end" : "self-start"}>
       <div className={["max-w-2xl rounded-md px-4 py-3 text-sm leading-6 shadow-sm", isUser ? "bg-accent text-white" : "bg-white text-slate-700"].join(" ")}>
         {isMockAiResponse ? (
-          <div className="mb-2">
-            <Badge tone="warning">Mock AI response</Badge>
+          <div className="mb-3 flex flex-wrap gap-2">
+            <Badge tone="warning">Mock advisor</Badge>
+            {message.model ? <Badge>{message.model}</Badge> : null}
           </div>
         ) : null}
-        {message.content}
+        {structuredResponse ? <StructuredAdvisorResponseView response={structuredResponse} /> : message.content}
       </div>
       {message.created_at ? (
         <p className={["mt-1 text-xs text-slate-500", isUser ? "text-right" : ""].join(" ")}>{formatDateTime(message.created_at)}</p>
       ) : null}
     </div>
   );
+}
+
+function StructuredAdvisorResponseView({ response }: { response: AIAdvisorStructuredResponse }) {
+  const sections = [
+    { title: "Insights", items: response.insights, tone: "neutral" as const },
+    { title: "Warnings", items: response.warnings, tone: "warning" as const },
+    { title: "Suggestions", items: response.suggestions, tone: "neutral" as const },
+    { title: "Limitations", items: response.limitations, tone: "warning" as const },
+    { title: "Follow-up questions", items: response.follow_up_questions, tone: "neutral" as const }
+  ];
+
+  return (
+    <div className="space-y-4">
+      {response.provider_metadata ? (
+        <div className="flex flex-wrap gap-2">
+          <Badge tone={response.provider_metadata.is_mock ? "warning" : "neutral"}>
+            {response.provider_metadata.provider}
+          </Badge>
+          <Badge>{response.provider_metadata.model}</Badge>
+        </div>
+      ) : null}
+      {response.summary ? <p>{response.summary}</p> : null}
+      {sections.map((section) =>
+        section.items?.length ? (
+          <div key={section.title}>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">{section.title}</p>
+            <ul className="space-y-2">
+              {section.items.map((item) => (
+                <li key={item} className="flex gap-2">
+                  {section.tone === "warning" ? (
+                    <AlertTriangle className="mt-1 shrink-0 text-amber-700" size={14} />
+                  ) : (
+                    <Info className="mt-1 shrink-0 text-accent" size={14} />
+                  )}
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null
+      )}
+    </div>
+  );
+}
+
+function buildStructuredResponse(message: ChatMessage, context?: AIAdvisorContext): AIAdvisorStructuredResponse {
+  const warnings = collectAdvisorWarnings(context);
+  return {
+    summary: message.content,
+    insights: collectAdvisorInsights(context),
+    warnings,
+    suggestions: collectAdvisorSuggestions(context),
+    limitations: collectAdvisorLimitations(message, context),
+    follow_up_questions: [
+      "Which concentration areas should I review?",
+      "What diversification gaps are visible?",
+      "Which risk metrics need more data?",
+      "What fundamentals coverage is missing?",
+      "What peer context is available?",
+      "What changed across recent snapshots?"
+    ],
+    provider_metadata: {
+      provider: message.provider ?? "unknown",
+      model: message.model ?? "unknown",
+      is_mock: message.provider?.trim().toLowerCase() === "mock"
+    }
+  };
+}
+
+function collectAdvisorInsights(context?: AIAdvisorContext) {
+  const insights: string[] = [];
+  for (const insight of context?.rule_based_insights ?? []) {
+    const text = [insight.title, insight.message].filter(Boolean).join(": ");
+    if (text) {
+      insights.push(text);
+    }
+  }
+  const largest = context?.portfolio_summary?.largest_holding;
+  if (largest?.symbol && typeof largest.weight === "number") {
+    insights.unshift(`${largest.symbol} is the largest holding at ${formatPercent(largest.weight)}.`);
+  }
+  const optionalContext = context?.optional_context;
+  if (optionalContext?.peer_summary?.symbol) {
+    insights.push(`Peer context is available for ${optionalContext.peer_summary.symbol}.`);
+  }
+  if (typeof optionalContext?.snapshot_change_summary?.snapshot_count === "number") {
+    insights.push(`${optionalContext.snapshot_change_summary.snapshot_count} snapshot(s) are available in advisor context.`);
+  }
+  return insights;
+}
+
+function collectAdvisorWarnings(context?: AIAdvisorContext) {
+  const warnings: string[] = [];
+  const missingPrices = context?.price_freshness?.missing_price_symbols ?? [];
+  if (missingPrices.length) {
+    warnings.push(`Missing current prices: ${missingPrices.join(", ")}.`);
+  }
+  warnings.push(...(context?.optional_context?.fundamentals_summary?.warnings ?? []));
+  warnings.push(...(context?.optional_context?.peer_summary?.warnings ?? []));
+  const fundamentalsStatus = context?.optional_context?.fundamentals_summary?.data_status;
+  if (fundamentalsStatus?.warning) {
+    warnings.push(fundamentalsStatus.warning);
+  }
+  const performanceStatus = context?.optional_context?.performance_history_summary?.data_status;
+  if (performanceStatus?.warning) {
+    warnings.push(performanceStatus.warning);
+  }
+  return Array.from(new Set(warnings));
+}
+
+function collectAdvisorSuggestions(context?: AIAdvisorContext) {
+  const suggestions = ["Review concentration, allocation, risk, data coverage, peer context, and recent changes together."];
+  if (context?.optional_context?.fundamentals_summary) {
+    suggestions.push("Use the fundamentals page to inspect weighted metrics and missing symbol coverage.");
+  }
+  if (context?.optional_context?.peer_summary) {
+    suggestions.push("Use the peers page to inspect static peer-set quality before relying on comparisons.");
+  }
+  if (context?.optional_context?.snapshot_change_summary) {
+    suggestions.push("Use the changes page to compare saved portfolio snapshots.");
+  }
+  return suggestions;
+}
+
+function collectAdvisorLimitations(message: ChatMessage, context?: AIAdvisorContext) {
+  const limitations = [
+    "This is deterministic advisor output from backend context, not real-time or personalized investment advice.",
+    "External AI calls are not active in this frontend flow."
+  ];
+  if (message.provider?.trim().toLowerCase() === "mock") {
+    limitations.push("The provider is mock; treat the response as an explanatory demo response.");
+  }
+  const optionalContext = context?.optional_context;
+  if (optionalContext?.performance_history_summary?.method) {
+    limitations.push(`Performance context uses ${String(optionalContext.performance_history_summary.method).replaceAll("_", " ")} assumptions.`);
+  }
+  if (optionalContext?.peer_summary?.peer_set_quality) {
+    limitations.push("Peer context can use static or sparse peer sets.");
+  }
+  return limitations;
 }
 
 function ContextMetric({ label, value }: { label: string; value: string }) {
@@ -467,7 +685,10 @@ function responseToAssistantMessage(response: AIAdvisorResponse): ChatMessage {
     role: "assistant",
     content: response.response,
     provider: response.provider,
-    created_at: response.created_at
+    model: response.model,
+    created_at: response.created_at,
+    structuredResponse: response.structured_response,
+    context: response.context
   };
 }
 
@@ -476,6 +697,8 @@ function toChatMessage(message: AIMessageResponse): ChatMessage {
     role: message.role === "user" ? "user" : "assistant",
     content: message.content,
     provider: message.provider,
+    model: message.model,
+    structuredResponse: message.structured_response,
     created_at: message.created_at
   };
 }

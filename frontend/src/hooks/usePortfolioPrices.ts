@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { analyticsQueryKey } from "./useAnalytics";
+import { dashboardBundleQueryKey } from "./useDashboardBundle";
 import { refreshPortfolioPrices } from "../services/marketDataApi";
 
 export function usePortfolioPrices(portfolioId: string | null | undefined) {
@@ -20,6 +21,7 @@ export function usePortfolioPrices(portfolioId: string | null | undefined) {
       void queryClient.invalidateQueries({ queryKey: ["holdings", portfolioId] });
       void queryClient.invalidateQueries({ queryKey: ["portfolio", portfolioId] });
       void queryClient.invalidateQueries({ queryKey: analyticsQueryKey(portfolioId) });
+      void queryClient.invalidateQueries({ queryKey: dashboardBundleQueryKey(portfolioId) });
     }
   });
 

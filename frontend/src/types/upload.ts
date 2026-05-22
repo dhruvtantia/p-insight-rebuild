@@ -18,10 +18,35 @@ export type UploadRow = {
   raw_data: Record<string, unknown>;
   mapped_data: Record<string, unknown>;
   validation_errors: string[];
+  warnings: string[];
   status: string;
 };
 
 export type ColumnMapping = Record<string, string>;
+
+export type UploadTargetField =
+  | "symbol"
+  | "quantity"
+  | "average_cost"
+  | "market_value"
+  | "company_name"
+  | "sector"
+  | "asset_class"
+  | "exchange"
+  | "currency";
+
+export type ColumnMappingSuggestion = {
+  target_field: UploadTargetField;
+  source_column: string;
+  confidence: number;
+  reason: string;
+};
+
+export type ColumnMappingSuggestionsResponse = {
+  upload_job_id: string;
+  detected_columns: string[];
+  suggestions: ColumnMappingSuggestion[];
+};
 
 export type ColumnMappingResponse = {
   upload_job: UploadJob;
@@ -38,10 +63,19 @@ export type ConfirmUploadResponse = {
   upload_job_id: string;
   status: "imported" | "partial_imported";
   imported_count: number;
+  invalid_count: number;
+  duplicate_count: number;
   skipped_count: number;
   invalid_rows: number;
   warnings: string[];
+  rejected_row_reasons: RejectedUploadRowReason[];
   created_holding_ids: string[];
+};
+
+export type RejectedUploadRowReason = {
+  row_number: number;
+  symbol: string | null;
+  reasons: string[];
 };
 
 export type UploadErrorsResponse = {

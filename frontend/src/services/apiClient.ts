@@ -3,12 +3,14 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") || ""
 export class ApiError extends Error {
   status: number;
   details: unknown;
+  code?: string;
 
-  constructor(message: string, status: number, details?: unknown) {
+  constructor(message: string, status: number, details?: unknown, code?: string) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.details = details;
+    this.code = code;
   }
 }
 
@@ -47,7 +49,7 @@ export async function apiRequest<T>(path: string, options: JsonRequestOptions = 
 
   if (!response.ok) {
     const apiMessage = payload?.error?.message ?? payload?.detail ?? "API request failed";
-    throw new ApiError(apiMessage, response.status, payload?.error?.details ?? payload);
+    throw new ApiError(apiMessage, response.status, payload?.error?.details ?? payload, payload?.error?.code);
   }
 
   return payload as T;
