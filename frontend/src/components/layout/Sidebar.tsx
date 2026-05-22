@@ -14,7 +14,8 @@ import {
   SearchCheck,
   Settings,
   Shield,
-  Star
+  Star,
+  UsersRound
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
@@ -30,6 +31,7 @@ const navItems = [
   { to: "/upload", label: "Upload", icon: FileUp },
   { to: "/analytics", label: "Analytics", icon: LineChart },
   { to: "/fundamentals", label: "Fundamentals", icon: SearchCheck },
+  { to: "/peers", label: "Peers", icon: UsersRound },
   { to: "/advisor", label: "AI Advisor", icon: Bot },
   { to: "/watchlist", label: "Watchlist", icon: Star },
   { to: "/brokers", label: "Brokers", icon: Building2 },
