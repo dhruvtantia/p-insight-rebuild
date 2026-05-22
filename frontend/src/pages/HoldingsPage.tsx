@@ -9,7 +9,7 @@ import { Badge, Button, Card, CardTitle, EmptyState, ErrorState, Input, LoadingS
 import { useHoldings } from "../hooks/useHoldings";
 import { usePortfolioPrices } from "../hooks/usePortfolioPrices";
 import { usePortfolios } from "../hooks/usePortfolios";
-import type { Holding, HoldingCreateInput } from "../types/holdings";
+import type { Holding, HoldingCreateInput, SectorSource } from "../types/holdings";
 
 const optionalMoney = z
   .string()
@@ -319,7 +319,15 @@ function HoldingsTable({
                 {formatCurrency(holding.unrealized_gain_loss, holding.currency)}
               </span>
             </Td>
-            <Td>{holding.sector ?? "--"}</Td>
+            <Td>
+              <div className="grid gap-1">
+                <span>{holding.sector ?? "--"}</span>
+                <SectorSourceBadge
+                  source={holding.sector_source}
+                  updatedAt={holding.sector_updated_at}
+                />
+              </div>
+            </Td>
             <Td>{holding.asset_class ? <Badge>{holding.asset_class}</Badge> : "--"}</Td>
             <Td>{holding.currency}</Td>
             <Td>
@@ -458,6 +466,31 @@ function HoldingForm({
         </Button>
       </form>
     </Card>
+  );
+}
+
+function SectorSourceBadge({
+  source,
+  updatedAt
+}: {
+  source: SectorSource | null | undefined;
+  updatedAt?: string | null;
+}) {
+  const normalizedSource = source ?? "unknown";
+  const tone =
+    normalizedSource === "manual"
+      ? "success"
+      : normalizedSource === "upload" || normalizedSource === "provider"
+        ? "neutral"
+        : normalizedSource === "mock"
+          ? "warning"
+          : "danger";
+  const title = updatedAt ? `Sector updated ${formatDateTime(updatedAt)}` : "Sector source unavailable";
+
+  return (
+    <Badge tone={tone} title={title} className="w-fit capitalize">
+      {normalizedSource}
+    </Badge>
   );
 }
 
