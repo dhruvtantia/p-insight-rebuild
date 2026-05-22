@@ -1,3 +1,5 @@
+export type SectorSource = "manual" | "upload" | "provider" | "mock" | "unknown";
+
 export type Holding = {
   id: string;
   portfolio_id: string;
@@ -10,6 +12,8 @@ export type Holding = {
   unrealized_gain_loss: number | null;
   currency: string;
   sector: string | null;
+  sector_source?: SectorSource | null;
+  sector_updated_at?: string | null;
   asset_class: string | null;
   exchange: string | null;
   created_at: string;
