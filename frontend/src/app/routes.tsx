@@ -8,6 +8,7 @@ import { BillingPage } from "../pages/BillingPage";
 import { BrokerConnectionsPage } from "../pages/BrokerConnectionsPage";
 import { ChangesPage } from "../pages/ChangesPage";
 import { DashboardPage } from "../pages/DashboardPage";
+import { FundamentalsPage } from "../pages/FundamentalsPage";
 import { HoldingsPage } from "../pages/HoldingsPage";
 import { LandingPage } from "../pages/LandingPage";
 import { LoginPage, SignupPage } from "../pages/AuthPages";
@@ -32,6 +33,7 @@ export const router = createBrowserRouter([
       { path: "holdings", element: <HoldingsPage /> },
       { path: "upload", element: <UploadPage /> },
       { path: "analytics", element: <AnalyticsPage /> },
+      { path: "fundamentals", element: <FundamentalsPage /> },
       { path: "advisor", element: <AIAdvisorPage /> },
       { path: "watchlist", element: <WatchlistPage /> },
       { path: "brokers", element: <BrokerConnectionsPage /> },
