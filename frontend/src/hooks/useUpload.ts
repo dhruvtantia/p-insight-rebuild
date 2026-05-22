@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   confirmUpload,
   createUploadJob,
+  getMappingSuggestions,
   getUploadErrors,
   getUploadJob,
   submitColumnMapping,
@@ -25,11 +26,19 @@ export function useUpload(uploadJobId: string | null, portfolioId: string | null
     enabled: Boolean(uploadJobId)
   });
 
+  const mappingSuggestions = useQuery({
+    queryKey: ["uploadMappingSuggestions", uploadJobId],
+    queryFn: () => getMappingSuggestions(uploadJobId!),
+    enabled: Boolean(uploadJobId),
+    retry: false
+  });
+
   const createUpload = useMutation({
     mutationFn: ({ targetPortfolioId, file }: { targetPortfolioId: string; file: File }) =>
       createUploadJob(targetPortfolioId, file),
     onSuccess: (data) => {
       void queryClient.setQueryData(["uploadJob", data.id], data);
+      void queryClient.invalidateQueries({ queryKey: ["uploadMappingSuggestions", data.id] });
     }
   });
 
@@ -63,9 +72,19 @@ export function useUpload(uploadJobId: string | null, portfolioId: string | null
   return {
     uploadJob,
     uploadErrors,
+    mappingSuggestions,
     createUpload,
     submitMapping,
     validate,
     confirm
   };
+}
+
+export function useUploadMappingSuggestions(uploadJobId: string | null) {
+  return useQuery({
+    queryKey: ["uploadMappingSuggestions", uploadJobId],
+    queryFn: () => getMappingSuggestions(uploadJobId!),
+    enabled: Boolean(uploadJobId),
+    retry: false
+  });
 }

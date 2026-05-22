@@ -1,11 +1,19 @@
-import { CheckCircle2, FileUp, UploadCloud } from "lucide-react";
+import { CheckCircle2, Lightbulb, UploadCloud } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { Badge, Button, Card, CardTitle, EmptyState, ErrorState, LoadingState, Table, Td, Th } from "../components/ui";
 import { usePortfolios } from "../hooks/usePortfolios";
 import { useUpload } from "../hooks/useUpload";
-import type { ColumnMapping, ConfirmUploadResponse, UploadJob, UploadRow, ValidateUploadResponse } from "../types/upload";
+import { ApiError } from "../services/apiClient";
+import type {
+  ColumnMapping,
+  ColumnMappingSuggestion,
+  ConfirmUploadResponse,
+  UploadJob,
+  UploadRow,
+  ValidateUploadResponse
+} from "../types/upload";
 
 const requiredFields = [
   { key: "symbol", label: "Symbol" },
@@ -52,7 +60,9 @@ export function UploadPage() {
 
   const canSubmitMapping = requiredFields.every((field) => mapping[field.key]);
   const invalidRows = validationResult?.rows.filter((row) => row.status === "invalid") ?? [];
+  const warningRows = validationResult?.rows.filter((row) => row.warnings?.length) ?? [];
   const validRows = validationResult?.upload_job.valid_rows ?? 0;
+  const fallbackMapping = useMemo(() => guessMapping(uploadJob?.detected_columns ?? []), [uploadJob?.detected_columns]);
 
   if (portfolios.isLoading) {
     return <LoadingState label="Loading portfolios" />;
@@ -172,6 +182,31 @@ export function UploadPage() {
           <p className="mt-2 text-sm text-slate-600">
             Map P-insight fields to the detected file columns. Indian symbols and quantity are required.
           </p>
+          <MappingSuggestionsPanel
+            isLoading={upload.mappingSuggestions.isLoading}
+            isError={upload.mappingSuggestions.isError}
+            error={upload.mappingSuggestions.error}
+            suggestions={upload.mappingSuggestions.data?.suggestions ?? []}
+            fallbackMapping={fallbackMapping}
+            onAccept={(suggestion) =>
+              setMapping((current) => ({
+                ...current,
+                [suggestion.target_field]: suggestion.source_column
+              }))
+            }
+            onAcceptAll={(suggestions) =>
+              setMapping((current) => ({
+                ...current,
+                ...mappingFromSuggestions(suggestions)
+              }))
+            }
+            onUseFallback={() =>
+              setMapping((current) => ({
+                ...current,
+                ...fallbackMapping
+              }))
+            }
+          />
           <ColumnMappingForm
             detectedColumns={uploadJob.detected_columns}
             mapping={mapping}
@@ -224,7 +259,9 @@ export function UploadPage() {
             </Button>
           </div>
           {upload.validate.isError ? <ErrorState title="Validation failed" detail={upload.validate.error.message} /> : null}
-          {validationResult ? <ValidationSummary validation={validationResult} invalidRows={invalidRows} /> : null}
+          {validationResult ? (
+            <ValidationSummary validation={validationResult} invalidRows={invalidRows} warningRows={warningRows} />
+          ) : null}
         </Card>
       ) : null}
 
@@ -350,6 +387,126 @@ function PreviewTable({ rows, columns }: { rows: Array<Record<string, unknown>>;
   );
 }
 
+function MappingSuggestionsPanel({
+  isLoading,
+  isError,
+  error,
+  suggestions,
+  fallbackMapping,
+  onAccept,
+  onAcceptAll,
+  onUseFallback
+}: {
+  isLoading: boolean;
+  isError: boolean;
+  error: Error | null;
+  suggestions: ColumnMappingSuggestion[];
+  fallbackMapping: ColumnMapping;
+  onAccept: (suggestion: ColumnMappingSuggestion) => void;
+  onAcceptAll: (suggestions: ColumnMappingSuggestion[]) => void;
+  onUseFallback: () => void;
+}) {
+  const hasFallback = Object.keys(fallbackMapping).length > 0;
+  const isFeatureDisabled = error instanceof ApiError && error.code === "feature_disabled";
+
+  if (isLoading) {
+    return (
+      <div className="mt-4 flex items-center gap-3 rounded-md border border-line bg-surface px-4 py-3 text-sm text-slate-600">
+        <Lightbulb className="text-accent" size={18} />
+        Loading mapping suggestions
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="mt-4 rounded-md border border-line bg-surface p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-ink">
+              {isFeatureDisabled ? "Mapping suggestions are not enabled" : "Mapping suggestions unavailable"}
+            </p>
+            <p className="mt-1 text-sm text-slate-600">
+              {isFeatureDisabled
+                ? "Manual column mapping is still available for this upload."
+                : error?.message ?? "Continue by mapping columns manually."}
+            </p>
+          </div>
+          {hasFallback ? (
+            <Button type="button" variant="secondary" onClick={onUseFallback}>
+              Use local matches
+            </Button>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
+  if (!suggestions.length) {
+    return (
+      <div className="mt-4 rounded-md border border-dashed border-line bg-white p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-ink">No mapping suggestions found</p>
+            <p className="mt-1 text-sm text-slate-600">Choose columns manually or use local column-name matches.</p>
+          </div>
+          {hasFallback ? (
+            <Button type="button" variant="secondary" onClick={onUseFallback}>
+              Use local matches
+            </Button>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4 space-y-3 rounded-md border border-line bg-surface p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-ink">Suggested mappings</p>
+          <p className="mt-1 text-sm text-slate-600">
+            Suggestions are not saved until you accept or edit them and then save the mapping.
+          </p>
+        </div>
+        <Button type="button" variant="secondary" onClick={() => onAcceptAll(suggestions)}>
+          Accept all suggestions
+        </Button>
+      </div>
+      <Table>
+        <thead>
+          <tr>
+            <Th>P-insight field</Th>
+            <Th>Detected column</Th>
+            <Th>Confidence</Th>
+            <Th>Reason</Th>
+            <Th>Action</Th>
+          </tr>
+        </thead>
+        <tbody>
+          {suggestions.map((suggestion) => (
+            <tr key={`${suggestion.target_field}-${suggestion.source_column}`}>
+              <Td>{labelForField(suggestion.target_field)}</Td>
+              <Td>{suggestion.source_column}</Td>
+              <Td>
+                <Badge tone={suggestion.confidence >= 0.9 ? "success" : "warning"}>
+                  {Math.round(suggestion.confidence * 100)}%
+                </Badge>
+              </Td>
+              <Td>{suggestion.reason}</Td>
+              <Td>
+                <Button type="button" variant="secondary" onClick={() => onAccept(suggestion)}>
+                  Accept
+                </Button>
+              </Td>
+            </tr>
+          ))}
+        </tbody>
+      </Table>
+    </div>
+  );
+}
+
 function ColumnMappingForm({
   detectedColumns,
   mapping,
@@ -396,10 +553,12 @@ function ColumnMappingForm({
 
 function ValidationSummary({
   validation,
-  invalidRows
+  invalidRows,
+  warningRows
 }: {
   validation: ValidateUploadResponse;
   invalidRows: UploadRow[];
+  warningRows: UploadRow[];
 }) {
   return (
     <div className="mt-4 space-y-4">
@@ -431,6 +590,30 @@ function ValidationSummary({
       ) : (
         <Badge tone="success">All rows are valid</Badge>
       )}
+
+      {warningRows.length ? (
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-ink">Validation warnings</p>
+          <Table>
+            <thead>
+              <tr>
+                <Th>Row</Th>
+                <Th>Symbol</Th>
+                <Th>Warnings</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {warningRows.map((row) => (
+                <tr key={row.id}>
+                  <Td>{row.row_number}</Td>
+                  <Td>{String(row.mapped_data.symbol ?? "--")}</Td>
+                  <Td className="text-amber-700">{row.warnings.join("; ")}</Td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -439,10 +622,12 @@ function SuccessScreen({ result }: { result: ConfirmUploadResponse }) {
   return (
     <Card>
       <CardTitle>Step 7: Import complete</CardTitle>
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+      <div className="mt-4 grid gap-3 sm:grid-cols-5">
+        <Summary label="Status" value={result.status.replace("_", " ")} />
         <Summary label="Imported" value={String(result.imported_count)} />
         <Summary label="Skipped" value={String(result.skipped_count)} />
-        <Summary label="Invalid" value={String(result.invalid_rows)} />
+        <Summary label="Invalid" value={String(result.invalid_count)} />
+        <Summary label="Duplicates" value={String(result.duplicate_count)} />
       </div>
       {result.warnings.length ? (
         <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-4">
@@ -454,6 +639,33 @@ function SuccessScreen({ result }: { result: ConfirmUploadResponse }) {
           </ul>
         </div>
       ) : null}
+      {result.rejected_row_reasons.length ? (
+        <div className="mt-4 space-y-2">
+          <p className="text-sm font-semibold text-ink">Rejected rows</p>
+          <Table>
+            <thead>
+              <tr>
+                <Th>Row</Th>
+                <Th>Symbol</Th>
+                <Th>Reasons</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {result.rejected_row_reasons.map((row) => (
+                <tr key={`${row.row_number}-${row.symbol ?? "unknown"}`}>
+                  <Td>{row.row_number}</Td>
+                  <Td>{row.symbol ?? "--"}</Td>
+                  <Td className="text-coral">{row.reasons.join("; ")}</Td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </div>
+      ) : (
+        <div className="mt-4">
+          <Badge tone="success">No rejected rows</Badge>
+        </div>
+      )}
       <div className="mt-5 flex flex-wrap gap-3">
         <Link to="/holdings">
           <Button>View holdings</Button>
@@ -468,6 +680,15 @@ function SuccessScreen({ result }: { result: ConfirmUploadResponse }) {
 
 function compactMapping(mapping: ColumnMapping) {
   return Object.fromEntries(Object.entries(mapping).filter(([, value]) => value));
+}
+
+function mappingFromSuggestions(suggestions: ColumnMappingSuggestion[]): ColumnMapping {
+  return Object.fromEntries(suggestions.map((suggestion) => [suggestion.target_field, suggestion.source_column]));
+}
+
+function labelForField(field: string) {
+  const label = [...requiredFields, ...optionalFields].find((candidate) => candidate.key === field)?.label;
+  return label ?? field.replace(/_/g, " ");
 }
 
 function guessMapping(columns: string[]): ColumnMapping {
