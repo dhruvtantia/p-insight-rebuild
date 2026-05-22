@@ -15,6 +15,7 @@ import {
   Settings,
   Shield,
   SlidersHorizontal,
+  Sparkles,
   Star,
   UsersRound
 } from "lucide-react";
@@ -35,6 +36,7 @@ const navItems = [
   { to: "/peers", label: "Peers", icon: UsersRound },
   { to: "/advisor", label: "AI Advisor", icon: Bot },
   { to: "/simulate", label: "Simulate", icon: SlidersHorizontal },
+  { to: "/optimize", label: "Optimize", icon: Sparkles },
   { to: "/watchlist", label: "Watchlist", icon: Star },
   { to: "/brokers", label: "Brokers", icon: Building2 },
   { to: "/billing", label: "Billing", icon: CreditCard },

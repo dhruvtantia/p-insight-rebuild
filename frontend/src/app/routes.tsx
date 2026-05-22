@@ -14,6 +14,7 @@ import { LandingPage } from "../pages/LandingPage";
 import { LoginPage, SignupPage } from "../pages/AuthPages";
 import { MarketPage } from "../pages/MarketPage";
 import { OnboardingPage } from "../pages/OnboardingPage";
+import { OptimizerPage } from "../pages/OptimizerPage";
 import { PeersPage } from "../pages/PeersPage";
 import { SettingsPage } from "../pages/SettingsPage";
 import { SimulatorPage } from "../pages/SimulatorPage";
@@ -39,6 +40,7 @@ export const router = createBrowserRouter([
       { path: "peers", element: <PeersPage /> },
       { path: "advisor", element: <AIAdvisorPage /> },
       { path: "simulate", element: <SimulatorPage /> },
+      { path: "optimize", element: <OptimizerPage /> },
       { path: "watchlist", element: <WatchlistPage /> },
       { path: "brokers", element: <BrokerConnectionsPage /> },
       { path: "billing", element: <BillingPage /> },
