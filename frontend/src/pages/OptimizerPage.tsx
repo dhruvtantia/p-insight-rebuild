@@ -1,5 +1,5 @@
-import { AlertTriangle, BarChart3, LineChart as LineChartIcon, Sparkles } from "lucide-react";
-import { useState } from "react";
+import { AlertTriangle, BarChart3, LineChart as LineChartIcon, ReceiptText, Sparkles } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   CartesianGrid,
@@ -22,6 +22,7 @@ import {
   EmptyState,
   ErrorState,
   FeatureDisabledState,
+  Input,
   LoadingState,
   Table,
   Td,
@@ -30,9 +31,12 @@ import {
 import { useHoldings } from "../hooks/useHoldings";
 import { useOptimizer } from "../hooks/useOptimizer";
 import { usePortfolios } from "../hooks/usePortfolios";
+import { useRebalanceTickets } from "../hooks/useRebalanceTickets";
 import { ApiError } from "../services/apiClient";
+import type { Holding } from "../types/holdings";
 import type { HistoricalPeriod } from "../types/performance";
 import type { OptimizerMetricSet, OptimizerResponse, OptimizerStatus } from "../types/optimizer";
+import type { RebalanceTicketAction, RebalanceTicketsResponse } from "../types/rebalance";
 
 const PERIODS: HistoricalPeriod[] = ["1M", "3M", "6M", "1Y", "5Y"];
 
@@ -64,7 +68,7 @@ export function OptimizerPage() {
     );
   }
 
-  const disabledError = getFeatureDisabledError(optimizer.optimization.error);
+  const disabledError = getFeatureDisabledError(optimizer.optimization.error, "ENABLE_OPTIMIZER");
 
   function handleRunOptimizer() {
     optimizer.optimization.mutate({
@@ -107,6 +111,12 @@ export function OptimizerPage() {
             <ErrorState title="Unable to run optimizer" detail={optimizer.optimization.error.message} />
           ) : null}
           {optimizer.optimization.data ? <OptimizerResults response={optimizer.optimization.data} /> : null}
+          <RebalanceTicketsSection
+            portfolioId={selectedPortfolio.id}
+            currency={selectedPortfolio.base_currency}
+            holdings={holdings.data}
+            optimizerResponse={optimizer.optimization.data}
+          />
         </>
       )}
     </div>
@@ -427,6 +437,362 @@ function EfficientFrontierChart({ response }: { response: OptimizerResponse }) {
   );
 }
 
+function RebalanceTicketsSection({
+  portfolioId,
+  currency,
+  holdings,
+  optimizerResponse
+}: {
+  portfolioId: string;
+  currency: string;
+  holdings: Holding[] | undefined;
+  optimizerResponse?: OptimizerResponse;
+}) {
+  const [targetWeights, setTargetWeights] = useState<Record<string, string>>({});
+  const [cashContribution, setCashContribution] = useState("");
+  const [cashWithdrawal, setCashWithdrawal] = useState("");
+  const [formError, setFormError] = useState<string | null>(null);
+  const rebalance = useRebalanceTickets(portfolioId);
+  const rebalanceDisabledError = getFeatureDisabledError(rebalance.tickets.error, "ENABLE_REBALANCE_TICKETS");
+  const currentTargetWeights = useMemo(() => targetWeightsFromHoldings(holdings ?? []), [holdings]);
+  const missingPriceSymbols = useMemo(
+    () => (holdings ?? []).filter((holding) => holding.current_price === null).map((holding) => holding.symbol).sort(),
+    [holdings]
+  );
+  const hasOptimizerTargets = Boolean(
+    optimizerResponse &&
+      (Object.keys(optimizerResponse.min_variance_target_weights.target_weights).length ||
+        Object.keys(optimizerResponse.max_sharpe_target_weights.target_weights).length)
+  );
+  const targetWeightTotal = sumTargetWeights(targetWeights);
+
+  useEffect(() => {
+    if (!holdings?.length) {
+      setTargetWeights({});
+      return;
+    }
+
+    setTargetWeights((current) => {
+      const currentSymbols = Object.keys(current).sort().join("|");
+      const nextSymbols = holdings.map((holding) => holding.symbol).sort().join("|");
+      return currentSymbols === nextSymbols ? current : currentTargetWeights;
+    });
+  }, [currentTargetWeights, holdings]);
+
+  function loadTargetWeights(weights: Record<string, number>) {
+    setFormError(null);
+    setTargetWeights(targetWeightInputsFromDecimalWeights(weights, holdings ?? []));
+  }
+
+  function updateTargetWeight(symbol: string, value: string) {
+    setFormError(null);
+    setTargetWeights((current) => ({
+      ...current,
+      [symbol]: value
+    }));
+  }
+
+  function handleGenerateTickets() {
+    const targetWeightMap = parseTargetWeights(targetWeights);
+    const total = roundToSix(sumNumericValues(targetWeightMap));
+    if (!Object.keys(targetWeightMap).length) {
+      setFormError("Enter at least one target weight before generating tickets.");
+      return;
+    }
+    if (total !== 100) {
+      setFormError(`Target weights must sum to 100%. Current total is ${formatNumber(total)}%.`);
+      return;
+    }
+    if (cashContribution && cashWithdrawal) {
+      setFormError("Use either a cash contribution or a cash withdrawal, not both.");
+      return;
+    }
+
+    rebalance.tickets.mutate({
+      target_weights: targetWeightMap,
+      cash_contribution: cashContribution ? Number(cashContribution) : null,
+      cash_withdrawal: cashWithdrawal ? Number(cashWithdrawal) : null
+    });
+  }
+
+  return (
+    <section className="space-y-4">
+      <Card>
+        <CardHeader>
+          <div>
+            <CardTitle>Rebalance ticket estimates</CardTitle>
+            <p className="mt-1 text-sm text-slate-600">
+              Generate non-executing buy, sell, and hold tickets from target weights. No holdings are modified.
+            </p>
+          </div>
+          <ReceiptText className="text-accent" size={22} />
+        </CardHeader>
+
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          These tickets are estimates only. This section does not execute trades, connect to brokers, or provide personalized investment advice.
+        </div>
+
+        {rebalanceDisabledError ? (
+          <div className="mt-4">
+            <FeatureDisabledState
+              feature="Rebalance tickets"
+              detail="The backend rebalance ticket feature flag is disabled in this environment."
+            />
+          </div>
+        ) : null}
+
+        {missingPriceSymbols.length ? (
+          <div className="mt-4">
+            <WarningBanner
+              detail={`Missing current price for ${missingPriceSymbols.join(", ")}. The backend will not generate tickets for symbols without prices.`}
+            />
+          </div>
+        ) : null}
+
+        {!Object.keys(targetWeights).length ? (
+          <div className="mt-4">
+            <EmptyState title="No target weights" detail="Add holdings or run the optimizer before generating rebalance tickets." />
+          </div>
+        ) : (
+          <div className="mt-5 space-y-5">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setFormError(null);
+                  setTargetWeights(currentTargetWeights);
+                }}
+                disabled={rebalance.tickets.isPending}
+              >
+                Use current weights
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => loadTargetWeights(optimizerResponse?.min_variance_target_weights.target_weights ?? {})}
+                disabled={!hasOptimizerTargets || rebalance.tickets.isPending}
+              >
+                Load min variance weights
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => loadTargetWeights(optimizerResponse?.max_sharpe_target_weights.target_weights ?? {})}
+                disabled={!hasOptimizerTargets || rebalance.tickets.isPending}
+              >
+                Load max Sharpe weights
+              </Button>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-[1fr_20rem]">
+              <div>
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <h3 className="text-sm font-semibold text-ink">Target weights</h3>
+                  <Badge tone={roundToSix(targetWeightTotal) === 100 ? "success" : "warning"}>
+                    Total {formatNumber(targetWeightTotal)}%
+                  </Badge>
+                </div>
+                <Table>
+                  <thead>
+                    <tr>
+                      <Th>Symbol</Th>
+                      <Th>Target weight</Th>
+                      <Th>Price status</Th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.keys(targetWeights)
+                      .sort()
+                      .map((symbol) => {
+                        const holding = holdings?.find((candidate) => candidate.symbol === symbol);
+                        return (
+                          <tr key={symbol}>
+                            <Td className="font-medium text-ink">{symbol}</Td>
+                            <Td>
+                              <div className="flex max-w-40 items-center gap-2">
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  step="0.01"
+                                  value={targetWeights[symbol]}
+                                  onChange={(event) => updateTargetWeight(symbol, event.target.value)}
+                                  disabled={rebalance.tickets.isPending}
+                                  aria-label={`${symbol} target weight percent`}
+                                />
+                                <span className="text-sm text-slate-500">%</span>
+                              </div>
+                            </Td>
+                            <Td>
+                              {holding?.current_price === null ? (
+                                <Badge tone="warning">Missing price</Badge>
+                              ) : (
+                                <Badge tone="success">Priced</Badge>
+                              )}
+                            </Td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </Table>
+              </div>
+
+              <div className="space-y-4">
+                <label className="block">
+                  <span className="mb-1 block text-sm font-medium text-slate-600">Cash contribution</span>
+                  <Input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={cashContribution}
+                    onChange={(event) => {
+                      setFormError(null);
+                      setCashContribution(event.target.value);
+                    }}
+                    disabled={rebalance.tickets.isPending}
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-sm font-medium text-slate-600">Cash withdrawal</span>
+                  <Input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={cashWithdrawal}
+                    onChange={(event) => {
+                      setFormError(null);
+                      setCashWithdrawal(event.target.value);
+                    }}
+                    disabled={rebalance.tickets.isPending}
+                  />
+                </label>
+                <Button type="button" onClick={handleGenerateTickets} disabled={rebalance.tickets.isPending || Boolean(rebalanceDisabledError)}>
+                  <ReceiptText size={16} />
+                  Generate tickets
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </Card>
+
+      {formError ? <ErrorState title="Invalid rebalance inputs" detail={formError} /> : null}
+      {rebalance.tickets.isPending ? <LoadingState label="Generating rebalance tickets" /> : null}
+      {rebalance.tickets.isError && !rebalanceDisabledError ? (
+        <ErrorState title="Unable to generate rebalance tickets" detail={rebalance.tickets.error.message} />
+      ) : null}
+      {rebalance.tickets.data ? <RebalanceTicketResults response={rebalance.tickets.data} currency={currency} /> : null}
+    </section>
+  );
+}
+
+function RebalanceTicketResults({ response, currency }: { response: RebalanceTicketsResponse; currency: string }) {
+  return (
+    <div className="space-y-4">
+      {response.warnings.map((warning) => (
+        <WarningBanner key={warning} detail={warning} />
+      ))}
+
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <MetricBlock label="Current value" value={formatCurrency(response.current_portfolio_value, currency)} />
+        <MetricBlock label="Target value" value={formatCurrency(response.target_portfolio_value, currency)} />
+        <MetricBlock label="Cash needed" value={formatCurrency(response.estimated_cash_needed, currency)} />
+        <MetricBlock label="Cash generated" value={formatCurrency(response.estimated_cash_generated, currency)} />
+        <MetricBlock label="Leftover cash" value={formatCurrency(response.leftover_cash, currency)} />
+      </section>
+
+      {!response.tickets.length ? (
+        <EmptyState title="No tickets generated" detail="The target weights did not require estimated buy or sell rows for priced holdings." />
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>Buy, sell, and hold tickets</CardTitle>
+          </CardHeader>
+          <Table>
+            <thead>
+              <tr>
+                <Th>Symbol</Th>
+                <Th>Action</Th>
+                <Th>Current</Th>
+                <Th>Target</Th>
+                <Th>Est. shares</Th>
+                <Th>Cash needed</Th>
+                <Th>Cash generated</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {response.tickets.map((ticket) => (
+                <tr key={ticket.symbol}>
+                  <Td className="font-medium text-ink">{ticket.symbol}</Td>
+                  <Td>
+                    <Badge tone={actionTone(ticket.action)}>{ticket.action}</Badge>
+                  </Td>
+                  <Td>{formatPercent(ticket.current_weight)}</Td>
+                  <Td>{formatPercent(ticket.target_weight)}</Td>
+                  <Td>{formatNumber(ticket.estimated_shares_to_trade)}</Td>
+                  <Td>{formatCurrency(ticket.estimated_cash_needed, currency)}</Td>
+                  <Td>{formatCurrency(ticket.estimated_cash_generated, currency)}</Td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function targetWeightsFromHoldings(holdings: Holding[]) {
+  const symbols = holdings.map((holding) => holding.symbol).sort();
+  if (!symbols.length) {
+    return {};
+  }
+
+  const totalValue = holdings.reduce((sum, holding) => sum + (holding.market_value ?? 0), 0);
+  if (totalValue <= 0) {
+    return percentInputsForSymbols(symbols, () => 100 / symbols.length);
+  }
+
+  const holdingsBySymbol = Object.fromEntries(holdings.map((holding) => [holding.symbol, holding]));
+  return percentInputsForSymbols(symbols, (symbol) => (((holdingsBySymbol[symbol]?.market_value ?? 0) / totalValue) * 100));
+}
+
+function targetWeightInputsFromDecimalWeights(weights: Record<string, number>, holdings: Holding[]) {
+  const symbols = Array.from(new Set([...holdings.map((holding) => holding.symbol), ...Object.keys(weights)])).sort();
+  return percentInputsForSymbols(symbols, (symbol) => (weights[symbol] ?? 0) * 100);
+}
+
+function percentInputsForSymbols(symbols: string[], getPercent: (symbol: string) => number) {
+  const entries: Array<[string, string]> = [];
+  let runningTotal = 0;
+  symbols.forEach((symbol, index) => {
+    const value = index === symbols.length - 1 ? roundToSix(100 - runningTotal) : roundToSix(getPercent(symbol));
+    runningTotal = roundToSix(runningTotal + value);
+    entries.push([symbol, String(value)]);
+  });
+  return Object.fromEntries(entries);
+}
+
+function parseTargetWeights(targetWeights: Record<string, string>) {
+  return Object.fromEntries(
+    Object.entries(targetWeights).map(([symbol, value]) => [symbol, Number.isFinite(Number(value)) ? Number(value) : 0])
+  );
+}
+
+function sumTargetWeights(targetWeights: Record<string, string>) {
+  return sumNumericValues(parseTargetWeights(targetWeights));
+}
+
+function sumNumericValues(values: Record<string, number>) {
+  return Object.values(values).reduce((sum, value) => sum + value, 0);
+}
+
+function actionTone(action: RebalanceTicketAction) {
+  if (action === "buy") return "success";
+  if (action === "sell") return "danger";
+  return "neutral";
+}
+
 function MetricBlock({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md border border-line bg-surface p-3">
@@ -436,14 +802,14 @@ function MetricBlock({ label, value }: { label: string; value: string }) {
   );
 }
 
-function getFeatureDisabledError(error: unknown) {
+function getFeatureDisabledError(error: unknown, featureName: string) {
   if (!(error instanceof ApiError)) {
     return null;
   }
 
   const details = typeof error.details === "object" && error.details !== null ? error.details : {};
   const feature = "feature" in details ? details.feature : null;
-  return error.code === "feature_disabled" || feature === "ENABLE_OPTIMIZER" ? error : null;
+  return error.code === "feature_disabled" || feature === featureName ? error : null;
 }
 
 function formatPercent(value: number | null) {
@@ -461,6 +827,14 @@ function formatNumber(value: number | null) {
   }).format(value);
 }
 
+function formatCurrency(value: number, currency: string) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 2
+  }).format(value);
+}
+
 function formatDateTime(value: string) {
   return new Intl.DateTimeFormat("en-US", {
     dateStyle: "medium",
@@ -471,4 +845,8 @@ function formatDateTime(value: string) {
 function clamp(value: number, min: number, max: number) {
   if (!Number.isFinite(value)) return min;
   return Math.min(Math.max(value, min), max);
+}
+
+function roundToSix(value: number) {
+  return Math.round(value * 1_000_000) / 1_000_000;
 }
