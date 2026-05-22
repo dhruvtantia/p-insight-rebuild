@@ -11,6 +11,7 @@ import {
   LineChart,
   ListChecks,
   Lock,
+  SearchCheck,
   Settings,
   Shield,
   Star
@@ -28,6 +29,7 @@ const navItems = [
   { to: "/holdings", label: "Holdings", icon: BarChart3 },
   { to: "/upload", label: "Upload", icon: FileUp },
   { to: "/analytics", label: "Analytics", icon: LineChart },
+  { to: "/fundamentals", label: "Fundamentals", icon: SearchCheck },
   { to: "/advisor", label: "AI Advisor", icon: Bot },
   { to: "/watchlist", label: "Watchlist", icon: Star },
   { to: "/brokers", label: "Brokers", icon: Building2 },
