@@ -1,8 +1,13 @@
+from pathlib import Path
+
 from app.modules.uploads.column_detection import (
     ColumnMappingSuggestion,
     suggest_column_mappings,
     suggest_column_mappings_from_rows,
 )
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+DEMO_PORTFOLIO_CSV = REPO_ROOT / "docs" / "demo-data" / "pinsight_demo_india_portfolio_mock.csv"
 
 
 def test_suggest_column_mappings_detects_supported_synonyms() -> None:
@@ -36,6 +41,38 @@ def test_suggest_column_mappings_detects_supported_synonyms() -> None:
     assert all(isinstance(suggestion, ColumnMappingSuggestion) for suggestion in suggestions)
     assert all(suggestion.confidence == 1 for suggestion in suggestions)
     assert all("Exact column match" in suggestion.reason for suggestion in suggestions)
+
+
+def test_demo_india_portfolio_columns_match_supported_mapping_suggestions() -> None:
+    header = DEMO_PORTFOLIO_CSV.read_text(encoding="utf-8-sig").splitlines()[0]
+    columns = header.split(",")
+    suggestions = suggest_column_mappings(columns)
+    mapping = {suggestion.target_field: suggestion.source_column for suggestion in suggestions}
+
+    assert columns == [
+        "Ticker",
+        "Name",
+        "Shares",
+        "Average Cost",
+        "Current Price",
+        "Market Value",
+        "Currency",
+        "Sector",
+        "Asset Class",
+        "Exchange",
+    ]
+    assert mapping == {
+        "symbol": "Ticker",
+        "quantity": "Shares",
+        "average_cost": "Average Cost",
+        "market_value": "Market Value",
+        "company_name": "Name",
+        "sector": "Sector",
+        "asset_class": "Asset Class",
+        "exchange": "Exchange",
+        "currency": "Currency",
+    }
+    assert "Current Price" not in mapping.values()
 
 
 def test_suggest_column_mappings_handles_spacing_case_and_punctuation() -> None:

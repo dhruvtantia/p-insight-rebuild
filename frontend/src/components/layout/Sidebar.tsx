@@ -44,9 +44,16 @@ const navItems = [
   { to: "/admin", label: "Admin", icon: Shield }
 ];
 
-export function Sidebar() {
+type SidebarProps = {
+  width?: number;
+};
+
+export function Sidebar({ width }: SidebarProps) {
   return (
-    <aside className="hidden min-h-screen w-64 shrink-0 border-r border-line bg-white px-4 py-5 lg:block">
+    <aside
+      className="hidden min-h-screen shrink-0 border-r border-line bg-white px-4 py-5 lg:block"
+      style={width ? { width, flexBasis: width } : undefined}
+    >
       <div className="mb-6">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">P-insight</p>
         <h1 className="mt-1 text-xl font-semibold text-ink">Portfolio OS</h1>
