@@ -14,6 +14,7 @@ import { LandingPage } from "../pages/LandingPage";
 import { LoginPage, SignupPage } from "../pages/AuthPages";
 import { MarketPage } from "../pages/MarketPage";
 import { OnboardingPage } from "../pages/OnboardingPage";
+import { PeersPage } from "../pages/PeersPage";
 import { SettingsPage } from "../pages/SettingsPage";
 import { UploadPage } from "../pages/UploadPage";
 import { WatchlistPage } from "../pages/WatchlistPage";
@@ -34,6 +35,7 @@ export const router = createBrowserRouter([
       { path: "upload", element: <UploadPage /> },
       { path: "analytics", element: <AnalyticsPage /> },
       { path: "fundamentals", element: <FundamentalsPage /> },
+      { path: "peers", element: <PeersPage /> },
       { path: "advisor", element: <AIAdvisorPage /> },
       { path: "watchlist", element: <WatchlistPage /> },
       { path: "brokers", element: <BrokerConnectionsPage /> },
