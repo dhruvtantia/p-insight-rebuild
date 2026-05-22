@@ -4,6 +4,9 @@ import { Link } from "react-router-dom";
 import {
   Bar,
   BarChart,
+  Legend,
+  Line,
+  LineChart,
   CartesianGrid,
   Cell,
   Pie,
@@ -14,9 +17,25 @@ import {
   YAxis
 } from "recharts";
 
-import { Badge, Button, Card, CardTitle, EmptyState, ErrorState, LoadingState, Table, Td, Th } from "../components/ui";
+import {
+  Badge,
+  Button,
+  Card,
+  CardTitle,
+  DataStatusBadge,
+  EmptyState,
+  ErrorState,
+  FeatureDisabledState,
+  LoadingState,
+  Table,
+  Td,
+  Th
+} from "../components/ui";
 import { useAnalytics } from "../hooks/useAnalytics";
+import { usePerformanceHistory } from "../hooks/usePerformanceHistory";
 import { usePortfolios } from "../hooks/usePortfolios";
+import { useRiskV2 } from "../hooks/useRiskV2";
+import { ApiError } from "../services/apiClient";
 import type {
   AllocationAnalytics,
   AllocationBucket,
@@ -25,16 +44,22 @@ import type {
   RiskAnalytics,
   RuleInsight
 } from "../types/analytics";
+import type { HistoricalPeriod, PortfolioPerformanceHistory } from "../types/performance";
+import type { RiskMetricStatus, RiskV2Response } from "../types/risk";
 
 const TABS = ["Overview", "Allocation", "Risk", "Performance", "Rules"] as const;
 type AnalyticsTab = (typeof TABS)[number];
+const PERIODS: HistoricalPeriod[] = ["1M", "3M", "6M", "1Y", "5Y"];
 const CHART_COLORS = ["#0f766e", "#d59a1a", "#e05d4f", "#2563eb", "#7c3aed", "#64748b"];
 
 export function AnalyticsPage() {
   const [activeTab, setActiveTab] = useState<AnalyticsTab>("Overview");
+  const [period, setPeriod] = useState<HistoricalPeriod>("1Y");
   const portfolios = usePortfolios();
   const selectedPortfolio = portfolios.data?.[0] ?? null;
   const analytics = useAnalytics(selectedPortfolio?.id);
+  const performanceHistory = usePerformanceHistory(selectedPortfolio?.id, period);
+  const riskV2 = useRiskV2(selectedPortfolio?.id, period);
 
   if (portfolios.isLoading) {
     return <LoadingState label="Loading portfolios" />;
@@ -97,17 +122,20 @@ export function AnalyticsPage() {
       />
 
       <Card>
-        <div className="flex flex-wrap gap-2">
-          {TABS.map((tab) => (
-            <Button
-              key={tab}
-              type="button"
-              variant={activeTab === tab ? "primary" : "secondary"}
-              onClick={() => setActiveTab(tab)}
-            >
-              {tab}
-            </Button>
-          ))}
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-wrap gap-2">
+            {TABS.map((tab) => (
+              <Button
+                key={tab}
+                type="button"
+                variant={activeTab === tab ? "primary" : "secondary"}
+                onClick={() => setActiveTab(tab)}
+              >
+                {tab}
+              </Button>
+            ))}
+          </div>
+          <PeriodSelector period={period} onChange={setPeriod} />
         </div>
       </Card>
 
@@ -118,9 +146,16 @@ export function AnalyticsPage() {
       ) : activeTab === "Allocation" ? (
         <AllocationSection allocation={allocation} currency={summary.base_currency} />
       ) : activeTab === "Risk" ? (
-        <RiskSection risk={risk} />
+        <RiskSection risk={risk} riskV2={riskV2.data} isLoading={riskV2.isLoading} isError={riskV2.isError} error={riskV2.error} />
       ) : activeTab === "Performance" ? (
-        <PerformanceSection performance={performance} currency={summary.base_currency} />
+        <PerformanceSection
+          performance={performance}
+          currency={summary.base_currency}
+          history={performanceHistory.data}
+          isLoading={performanceHistory.isLoading}
+          isError={performanceHistory.isError}
+          error={performanceHistory.error}
+        />
       ) : (
         <RulesSection rules={rules} />
       )}
@@ -157,6 +192,31 @@ function AnalyticsHeader({
         </Button>
       ) : null}
     </section>
+  );
+}
+
+function PeriodSelector({
+  period,
+  onChange
+}: {
+  period: HistoricalPeriod;
+  onChange: (period: HistoricalPeriod) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-sm font-medium text-slate-600">Period</span>
+      {PERIODS.map((candidate) => (
+        <Button
+          key={candidate}
+          type="button"
+          variant={period === candidate ? "primary" : "secondary"}
+          className="h-8 px-3"
+          onClick={() => onChange(candidate)}
+        >
+          {candidate}
+        </Button>
+      ))}
+    </div>
   );
 }
 
@@ -228,16 +288,36 @@ function AllocationSection({ allocation, currency }: { allocation: AllocationAna
   );
 }
 
-function RiskSection({ risk }: { risk: RiskAnalytics }) {
+function RiskSection({
+  risk,
+  riskV2,
+  isLoading,
+  isError,
+  error
+}: {
+  risk: RiskAnalytics;
+  riskV2?: RiskV2Response;
+  isLoading: boolean;
+  isError: boolean;
+  error: Error | null;
+}) {
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-3">
-        <RiskMetricCard title="Volatility" metric={risk.volatility} />
-        <RiskMetricCard title="Sharpe Ratio" metric={risk.sharpe_ratio} />
-        <RiskMetricCard title="Max Drawdown" metric={risk.max_drawdown} />
-      </div>
+      {isLoading ? (
+        <LoadingState label="Loading risk metrics" />
+      ) : isFeatureDisabled(error) ? (
+        <FeatureDisabledState
+          feature="Risk v2"
+          detail="Backend risk v2 is disabled in this environment. Legacy concentration analytics remain available below."
+        />
+      ) : isError ? (
+        <ErrorState title="Unable to load risk v2" detail={error?.message} />
+      ) : riskV2 ? (
+        <RiskV2Panel risk={riskV2} />
+      ) : null}
+
       <Card>
-        <CardTitle>Concentration risk</CardTitle>
+        <CardTitle>Legacy concentration risk</CardTitle>
         <div className="mt-4 grid gap-4 md:grid-cols-4">
           <MetricBlock label="Status" value={risk.concentration.status} />
           <MetricBlock label="Largest holding" value={risk.concentration.largest_holding?.symbol ?? "N/A"} />
@@ -250,7 +330,21 @@ function RiskSection({ risk }: { risk: RiskAnalytics }) {
   );
 }
 
-function PerformanceSection({ performance, currency }: { performance: PerformanceAnalytics; currency: string }) {
+function PerformanceSection({
+  performance,
+  currency,
+  history,
+  isLoading,
+  isError,
+  error
+}: {
+  performance: PerformanceAnalytics;
+  currency: string;
+  history?: PortfolioPerformanceHistory;
+  isLoading: boolean;
+  isError: boolean;
+  error: Error | null;
+}) {
   const chartData = [
     ...performance.top_gainers.map((holding) => ({ ...holding, type: "Gainer" })),
     ...performance.top_losers.map((holding) => ({ ...holding, type: "Loser" }))
@@ -258,6 +352,19 @@ function PerformanceSection({ performance, currency }: { performance: Performanc
 
   return (
     <div className="space-y-6">
+      {isLoading ? (
+        <LoadingState label="Loading performance history" />
+      ) : isFeatureDisabled(error) ? (
+        <FeatureDisabledState
+          feature="Performance history"
+          detail="Backend performance history is disabled in this environment. Legacy unrealized P/L analytics remain available below."
+        />
+      ) : isError ? (
+        <ErrorState title="Unable to load performance history" detail={error?.message} />
+      ) : history ? (
+        <PerformanceHistoryPanel history={history} />
+      ) : null}
+
       <div className="grid gap-4 md:grid-cols-3">
         <MetricCard title="Total Cost Basis" value={formatCurrency(performance.total_cost_basis, currency)} />
         <MetricCard
@@ -290,6 +397,140 @@ function PerformanceSection({ performance, currency }: { performance: Performanc
         <EmptyState title="Performance" detail="Price and cost basis data are needed before gainers and losers can be displayed." />
       )}
       <PerformanceTable performance={performance} currency={currency} />
+    </div>
+  );
+}
+
+function PerformanceHistoryPanel({ history }: { history: PortfolioPerformanceHistory }) {
+  const chartData = buildPerformanceHistoryChartData(history);
+
+  return (
+    <Card>
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div>
+          <CardTitle>Portfolio vs {history.benchmark_symbol}</CardTitle>
+          <p className="mt-2 text-sm text-slate-600">
+            {history.period} · {formatDate(history.start_date)} to {formatDate(history.end_date)}
+          </p>
+        </div>
+        <DataStatusBadge status={history.data_status} />
+      </div>
+
+      <AssumptionsNotice assumptions={history.assumptions} />
+
+      {history.missing_price_symbols.length ? (
+        <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          Missing historical prices for {history.missing_price_symbols.join(", ")}.
+        </div>
+      ) : null}
+
+      {chartData.length ? (
+        <div className="mt-5 h-80">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData} margin={{ left: 8, right: 20, top: 8, bottom: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+              <XAxis dataKey="date" tickFormatter={formatChartDate} />
+              <YAxis tickFormatter={(value) => formatPercent(Number(value))} />
+              <Tooltip
+                labelFormatter={(value) => formatDate(String(value))}
+                formatter={(value, name) => [
+                  formatPercent(typeof value === "number" ? value : Number(value)),
+                  name === "portfolio_return" ? "Portfolio" : history.benchmark_symbol
+                ]}
+              />
+              <Legend formatter={(value) => (value === "portfolio_return" ? "Portfolio" : history.benchmark_symbol)} />
+              <Line type="monotone" dataKey="portfolio_return" stroke="#0f766e" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="benchmark_return" stroke="#2563eb" strokeWidth={2} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      ) : (
+        <div className="mt-4">
+          <EmptyState
+            title="No performance observations"
+            detail={history.data_status.warning ?? "No normalized return series is available for this period."}
+          />
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function RiskV2Panel({ risk }: { risk: RiskV2Response }) {
+  const metricRows = [
+    { key: "annualized_return", title: "Annualized Return", value: risk.annualized_return, format: "percent" },
+    { key: "annualized_volatility", title: "Annualized Volatility", value: risk.annualized_volatility, format: "percent" },
+    { key: "sharpe_ratio", title: "Sharpe Ratio", value: risk.sharpe_ratio, format: "number" },
+    { key: "sortino_ratio", title: "Sortino Ratio", value: risk.sortino_ratio, format: "number" },
+    { key: "max_drawdown", title: "Max Drawdown", value: risk.max_drawdown, format: "percent" },
+    { key: "downside_deviation", title: "Downside Deviation", value: risk.downside_deviation, format: "percent" },
+    { key: "value_at_risk_95", title: "Value at Risk 95%", value: risk.value_at_risk_95, format: "percent" },
+    { key: "beta_vs_benchmark", title: `Beta vs ${risk.benchmark_symbol}`, value: risk.beta_vs_benchmark, format: "number" },
+    { key: "tracking_error", title: "Tracking Error", value: risk.tracking_error, format: "percent" },
+    { key: "information_ratio", title: "Information Ratio", value: risk.information_ratio, format: "number" }
+  ] as const;
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div>
+            <CardTitle>Risk v2</CardTitle>
+            <p className="mt-2 text-sm text-slate-600">
+              {risk.period} · {risk.observations} return observation{risk.observations === 1 ? "" : "s"} · benchmark{" "}
+              {risk.benchmark_symbol}
+            </p>
+          </div>
+          <DataStatusBadge status={risk.data_status} />
+        </div>
+        <AssumptionsNotice assumptions={risk.assumptions} />
+      </Card>
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        {metricRows.map((metric) => (
+          <RiskV2MetricCard
+            key={metric.key}
+            title={metric.title}
+            value={metric.value}
+            valueFormat={metric.format}
+            status={risk.metric_status[metric.key]}
+          />
+        ))}
+      </div>
+
+      {risk.correlation_matrix ? (
+        <Card>
+          <CardTitle>Correlation matrix</CardTitle>
+          <div className="mt-4">
+            <Table>
+              <thead>
+                <tr>
+                  <Th>Series</Th>
+                  <Th>Portfolio</Th>
+                  <Th>{risk.benchmark_symbol}</Th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <Td className="font-semibold text-ink">Portfolio</Td>
+                  <Td>{formatNumberMetric(risk.correlation_matrix.portfolio?.portfolio ?? null)}</Td>
+                  <Td>{formatNumberMetric(risk.correlation_matrix.portfolio?.benchmark ?? null)}</Td>
+                </tr>
+                <tr>
+                  <Td className="font-semibold text-ink">{risk.benchmark_symbol}</Td>
+                  <Td>{formatNumberMetric(risk.correlation_matrix.benchmark?.portfolio ?? null)}</Td>
+                  <Td>{formatNumberMetric(risk.correlation_matrix.benchmark?.benchmark ?? null)}</Td>
+                </tr>
+              </tbody>
+            </Table>
+          </div>
+        </Card>
+      ) : (
+        <EmptyState
+          title="Correlation matrix unavailable"
+          detail={risk.metric_status.correlation_matrix?.message ?? "Benchmark correlation is not available for this period."}
+        />
+      )}
     </div>
   );
 }
@@ -480,14 +721,68 @@ function PerformanceList({
   );
 }
 
-function RiskMetricCard({ title, metric }: { title: string; metric: { value: number | null; status: string; message: string } }) {
+function RiskV2MetricCard({
+  title,
+  value,
+  valueFormat,
+  status
+}: {
+  title: string;
+  value: number | null;
+  valueFormat: "number" | "percent";
+  status?: RiskMetricStatus;
+}) {
   return (
     <Card>
-      <p className="text-sm text-slate-600">{title}</p>
-      <p className="mt-2 text-xl font-semibold text-ink">{metric.value === null ? "N/A" : String(metric.value)}</p>
-      <p className="mt-1 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">{metric.status}</p>
-      <p className="mt-3 text-sm leading-6 text-slate-600">{metric.message}</p>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <p className="text-sm text-slate-600">{title}</p>
+        <MetricStatusBadge status={status} />
+      </div>
+      <p className="mt-2 text-xl font-semibold text-ink">
+        {valueFormat === "percent" ? formatPercent(value) : formatNumberMetric(value)}
+      </p>
+      <p className="mt-3 text-sm leading-6 text-slate-600">
+        {status?.message ?? "Metric status was not returned by the backend."}
+      </p>
     </Card>
+  );
+}
+
+function MetricStatusBadge({ status }: { status?: RiskMetricStatus }) {
+  if (!status) {
+    return (
+      <Badge tone="danger" title="Metric status was not returned by the backend.">
+        missing status
+      </Badge>
+    );
+  }
+
+  const statusCode = status.status;
+  const tone =
+    statusCode === "ok"
+      ? "success"
+      : statusCode === "partial_data"
+        ? "warning"
+        : statusCode === "insufficient_history" || statusCode === "missing_benchmark"
+          ? "warning"
+          : "neutral";
+
+  return (
+    <Badge tone={tone} title={status.message} className="capitalize">
+      {statusCode.replace(/_/g, " ")}
+    </Badge>
+  );
+}
+
+function AssumptionsNotice({ assumptions }: { assumptions: { method: string } }) {
+  return (
+    <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+      <p className="font-semibold">Synthetic current-holdings history</p>
+      <p className="mt-1">
+        This uses the backend's {assumptions.method.replace(/_/g, " ")} method. It assumes current quantities were held
+        throughout the period and is not transaction-aware, not XIRR, and not time-weighted return.
+      </p>
+    </div>
   );
 }
 
@@ -529,6 +824,32 @@ function MetricBlock({ label, value }: { label: string; value: string }) {
   );
 }
 
+function buildPerformanceHistoryChartData(history: PortfolioPerformanceHistory) {
+  const rowsByDate = new Map<string, { date: string; portfolio_return?: number; benchmark_return?: number }>();
+
+  for (const point of history.portfolio_normalized_return_series) {
+    rowsByDate.set(point.date, {
+      ...rowsByDate.get(point.date),
+      date: point.date,
+      portfolio_return: point.normalized_return
+    });
+  }
+
+  for (const point of history.benchmark_normalized_return_series) {
+    rowsByDate.set(point.date, {
+      ...rowsByDate.get(point.date),
+      date: point.date,
+      benchmark_return: point.normalized_return
+    });
+  }
+
+  return Array.from(rowsByDate.values()).sort((left, right) => left.date.localeCompare(right.date));
+}
+
+function isFeatureDisabled(error: Error | null) {
+  return error instanceof ApiError && error.code === "feature_disabled";
+}
+
 function formatCurrency(value: number | null, currency: string) {
   if (value === null) return "N/A";
   return new Intl.NumberFormat("en-US", {
@@ -547,12 +868,34 @@ function formatCompactCurrency(value: number, currency: string) {
   }).format(value);
 }
 
+function formatNumberMetric(value: number | null) {
+  if (value === null) return "N/A";
+  return new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: 3
+  }).format(value);
+}
+
 function formatPercent(value: number | null) {
   if (value === null) return "N/A";
   return new Intl.NumberFormat("en-US", {
     style: "percent",
     maximumFractionDigits: 1
   }).format(value);
+}
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric"
+  }).format(new Date(value));
+}
+
+function formatChartDate(value: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric"
+  }).format(new Date(value));
 }
 
 function formatDateTime(value: string) {
