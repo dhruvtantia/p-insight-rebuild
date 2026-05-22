@@ -6,6 +6,7 @@ import { AIAdvisorPage } from "../pages/AIAdvisorPage";
 import { AnalyticsPage } from "../pages/AnalyticsPage";
 import { BillingPage } from "../pages/BillingPage";
 import { BrokerConnectionsPage } from "../pages/BrokerConnectionsPage";
+import { ChangesPage } from "../pages/ChangesPage";
 import { DashboardPage } from "../pages/DashboardPage";
 import { HoldingsPage } from "../pages/HoldingsPage";
 import { LandingPage } from "../pages/LandingPage";
@@ -27,6 +28,7 @@ export const router = createBrowserRouter([
       { path: "onboarding", element: <OnboardingPage /> },
       { path: "market", element: <MarketPage /> },
       { path: "dashboard", element: <DashboardPage /> },
+      { path: "changes", element: <ChangesPage /> },
       { path: "holdings", element: <HoldingsPage /> },
       { path: "upload", element: <UploadPage /> },
       { path: "analytics", element: <AnalyticsPage /> },
