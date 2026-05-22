@@ -14,6 +14,7 @@ import {
   SearchCheck,
   Settings,
   Shield,
+  SlidersHorizontal,
   Star,
   UsersRound
 } from "lucide-react";
@@ -33,6 +34,7 @@ const navItems = [
   { to: "/fundamentals", label: "Fundamentals", icon: SearchCheck },
   { to: "/peers", label: "Peers", icon: UsersRound },
   { to: "/advisor", label: "AI Advisor", icon: Bot },
+  { to: "/simulate", label: "Simulate", icon: SlidersHorizontal },
   { to: "/watchlist", label: "Watchlist", icon: Star },
   { to: "/brokers", label: "Brokers", icon: Building2 },
   { to: "/billing", label: "Billing", icon: CreditCard },
